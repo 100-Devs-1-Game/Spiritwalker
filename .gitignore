@@ -16,6 +16,7 @@ builds/
 export.cfg
 export_credentials.cfg
 *.tscn*tmp
+.tmp
 src/addons/godot-git-plugin
 src/override.cfg
 

@@ -1,0 +1,95 @@
+[gd_scene load_steps=3 format=3 uid="uid://xpf0qlm4agdp"]
+
+[ext_resource type="Script" uid="uid://q8glv014moyu" path="res://assets/scripts/parser.gd" id="1_gpe21"]
+[ext_resource type="Texture2D" uid="uid://bs5ij5mauog3c" path="res://assets/textures/GUI/button/button_fancy.png" id="2_mtjj8"]
+
+[node name="parser" type="Node3D"]
+script = ExtResource("1_gpe21")
+
+[node name="HTTPRequest" type="HTTPRequest" parent="."]
+download_file = "res://assets/osmFiles/myMap.json"
+
+[node name="paths" type="Node3D" parent="."]
+
+[node name="buildings" type="Node3D" parent="paths"]
+
+[node name="water" type="Node3D" parent="paths"]
+
+[node name="railway" type="Node3D" parent="paths"]
+
+[node name="other" type="Node3D" parent="paths"]
+
+[node name="streets" type="Node3D" parent="paths"]
+
+[node name="boundary" type="Node3D" parent="paths"]
+
+[node name="Button" type="Button" parent="."]
+visible = false
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -382.0
+offset_top = 40.0
+offset_right = 216.0
+offset_bottom = 281.0
+grow_horizontal = 0
+scale = Vector2(0.6, 0.6)
+text = "Teleport"
+icon = ExtResource("2_mtjj8")
+icon_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -329.0
+offset_top = -241.0
+offset_right = 329.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 6
+size_flags_vertical = 10
+alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading gps coordinates..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label3" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "finished parsing"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label4" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "2024-08-21T15:09:46"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label5" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "checking if player is within bounds..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="collectables" type="Node3D" parent="."]
+
+[connection signal="pressed" from="Button" to="." method="_on_button_pressed"]

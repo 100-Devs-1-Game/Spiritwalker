@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SavedInventory" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://assets/scripts/save/saved_inventory.gd" id="1_4q7o2"]
+
+[resource]
+script = ExtResource("1_4q7o2")
+collectables = {
+"crystal_blue": 17,
+"crystal_green": 15,
+"crystal_pink": 26,
+"crystal_purple": 14
+}

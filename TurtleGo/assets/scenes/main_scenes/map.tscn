@@ -1,0 +1,122 @@
+[gd_scene load_steps=17 format=3 uid="uid://ccfor5yj8jlo8"]
+
+[ext_resource type="PackedScene" uid="uid://coyjefbogouuy" path="res://assets/scenes/camera.tscn" id="3_vpdq8"]
+[ext_resource type="PackedScene" uid="uid://bwrteriduaif5" path="res://assets/scenes/UI.tscn" id="3_x424g"]
+[ext_resource type="PackedScene" uid="uid://j8nd1qc28s7d" path="res://assets/scenes/player.tscn" id="4_hdkei"]
+[ext_resource type="PackedScene" uid="uid://xpf0qlm4agdp" path="res://assets/scenes/parser.tscn" id="5_4xpym"]
+[ext_resource type="PackedScene" uid="uid://du6c2warfhxof" path="res://assets/scenes/save_load.tscn" id="6_66qot"]
+
+[sub_resource type="Gradient" id="Gradient_tbgav"]
+colors = PackedColorArray(0, 0.42352942, 0, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_xwcwa"]
+gradient = SubResource("Gradient_tbgav")
+
+[sub_resource type="Gradient" id="Gradient_mg1dk"]
+colors = PackedColorArray(0.5834435, 0.22453526, 0.6305052, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_k4lmo"]
+gradient = SubResource("Gradient_mg1dk")
+
+[sub_resource type="Gradient" id="Gradient_w6dwl"]
+colors = PackedColorArray(0.16711429, 0.34368154, 0.6446079, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_tg4js"]
+gradient = SubResource("Gradient_w6dwl")
+
+[sub_resource type="Gradient" id="Gradient_ikh6o"]
+colors = PackedColorArray(0.68242913, 0.18569514, 0.21950665, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_0up4d"]
+gradient = SubResource("Gradient_ikh6o")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ogpwb"]
+
+[sub_resource type="Sky" id="Sky_d7y1g"]
+sky_material = SubResource("ShaderMaterial_ogpwb")
+
+[sub_resource type="Environment" id="Environment_t1d16"]
+background_mode = 1
+background_color = Color(0.405579, 0.483814, 0.352536, 1)
+sky = SubResource("Sky_d7y1g")
+sky_custom_fov = 15.4
+
+[node name="main" type="Node3D"]
+
+[node name="UI" parent="." instance=ExtResource("3_x424g")]
+
+[node name="TextureRect" parent="UI/CanvasLayer/PanelContainer/CollectableContainer" index="0"]
+texture = SubResource("GradientTexture2D_xwcwa")
+
+[node name="TextureRect2" parent="UI/CanvasLayer/PanelContainer/CollectableContainer" index="2"]
+texture = SubResource("GradientTexture2D_k4lmo")
+
+[node name="TextureRect3" parent="UI/CanvasLayer/PanelContainer/CollectableContainer" index="4"]
+texture = SubResource("GradientTexture2D_tg4js")
+
+[node name="TextureRect4" parent="UI/CanvasLayer/PanelContainer/CollectableContainer" index="6"]
+texture = SubResource("GradientTexture2D_0up4d")
+
+[node name="parser" parent="." instance=ExtResource("5_4xpym")]
+
+[node name="HTTPRequest" parent="parser" index="0"]
+download_file = "/home/turtle/.local/share/godot/app_userdata/TurtleGo/myMap.xml"
+
+[node name="Button" parent="parser" index="2"]
+visible = true
+offset_left = -645.0
+offset_top = 44.0
+offset_right = -47.0
+offset_bottom = 285.0
+icon = null
+
+[node name="VBoxContainer" parent="parser" index="3"]
+anchors_preset = -1
+anchor_left = 0.31111112
+anchor_right = 1.2324075
+offset_left = -310.0
+alignment = 0
+
+[node name="Label" parent="parser/VBoxContainer" index="0"]
+horizontal_alignment = 0
+
+[node name="Label2" parent="parser/VBoxContainer" index="1"]
+text = "1https://overpass-api.de/api/map?bbox=8.53898,47.37704,8.54098,47.37904"
+horizontal_alignment = 0
+
+[node name="Label3" parent="parser/VBoxContainer" index="2"]
+horizontal_alignment = 0
+
+[node name="Label4" parent="parser/VBoxContainer" index="3"]
+text = "2025-10-11T14:45:07"
+horizontal_alignment = 0
+
+[node name="Label5" parent="parser/VBoxContainer" index="4"]
+horizontal_alignment = 0
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.897258, 0.441506, 0, -0.441506, -0.897258, 0, 17.5641, 0)
+light_color = Color(0.709188, 0.598017, 0.562156, 1)
+light_energy = 3.832
+light_indirect_energy = 9.279
+light_volumetric_fog_energy = 0.0
+light_angular_distance = 43.95
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_t1d16")
+
+[node name="Save_Load" parent="." instance=ExtResource("6_66qot")]
+
+[node name="Camera" parent="." instance=ExtResource("3_vpdq8")]
+
+[node name="Camera3D" parent="Camera" index="0"]
+transform = Transform3D(1, 0, 0, 0, 0.743145, 0.669131, 0, -0.669131, 0.743145, 0, 65.725, 40.75)
+fov = 79.1
+
+[node name="player" parent="." instance=ExtResource("4_hdkei")]
+
+[node name="TargetRotator" type="Node3D" parent="."]
+
+[editable path="UI"]
+[editable path="parser"]
+[editable path="Camera"]
