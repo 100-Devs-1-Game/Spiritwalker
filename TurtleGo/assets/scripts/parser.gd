@@ -1,5 +1,5 @@
 #@tool
-extends Node3D
+class_name Parser extends Node3D
 
 #####################################
 #######GPS using Praxismapper plugin
@@ -92,9 +92,14 @@ func _ready():
 	if userOS == "Windows" || userOS == "Linux":
 		print(OS.get_name())
 		#parseXML(filePath)
+		# Parse the XML in the project for the first load
+		# to make it faster
 
-		downloadMap(47.37804,8.53998)
+		lat = 47.376398
+		lon = 8.539606
 		parseXML("res://assets/osmFiles/myMap.xml")
+
+		downloadMap(lat, lon)
 	else:
 		if FileAccess.file_exists(filePath):
 			parseXML(filePath)
@@ -172,17 +177,25 @@ func clearParsedData():
 	streetMatrix_primary.clear()
 	streetMatrix_secondary.clear()
 	waterMatrix.clear()
+	railMatrix.clear()
 	memberMatrix.clear()
 	wayID_to_waypoint_dict.clear()
 	wayID = 0
 
 #read the osm data from openstreetmap.org
 func parseXML(_filePath):
-
 	clearParsedData()
 	var parser = XMLParser.new()
 	parser.open(_filePath)
+	var loopcount := 0
 	while parser.read() != ERR_FILE_EOF:
+
+		# every 100 nodes we let the engine run for one frame
+		# just to keep things moving
+		loopcount += 1
+		if loopcount % 100 == 0:
+			await get_tree().process_frame
+
 		if parser.get_node_type() == XMLParser.NODE_ELEMENT:
 			var node_name = parser.get_node_name()
 			if node_name == "node":
@@ -270,6 +283,9 @@ func minmaxCoordinates(_minlat, _maxlat, _minlon, _maxlon):
 	z_center = (z_min + z_max) /2
 	boundaryBox = (x_max - x_center) * boundaryDelimiter
 
+	# when we update the boundary box we also update the player again
+	mercatorProjection(0, lat, lon)
+
 	#print_debug("boundary box: ", boundaryBox)
 
 func mercatorProjection(_id, _lat, _lon):
@@ -291,7 +307,7 @@ func playerBounds(_x, _z):
 	var player_x = _x - x_center
 	var player_z = -(_z - z_center)
 	var _playerPos = Vector3(player_x , 0, player_z)
-	Signals.emit_signal("playerPos", _playerPos)
+	Signals.playerPos.emit(_playerPos)
 
 	if abs(player_x) >= abs(boundaryBox):
 		if allow_new_mapRequest == true:
@@ -383,7 +399,8 @@ func calcCurve3D():
 func _on_button_pressed():
 	if allow_new_mapRequest == true:
 		new_mapRequest = true
-		downloadMap(47.37804,8.53998)
+		lat += 0.001
+		downloadMap(lat, lon)
 
 func placeCollectables():
 	#place the collectables on the map. Use deterministic pseudo-random numbers.
