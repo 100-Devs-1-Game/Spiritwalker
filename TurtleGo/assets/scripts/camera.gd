@@ -23,7 +23,7 @@ func handle_drag(event: InputEventScreenDrag):
 	if touchPoints.size() == 1:
 		#print(event.position)
 
-		rotation_degrees.y += abs(event.relative.x) * rotationSpeed
+		rotation_degrees.y += event.relative.x * rotationSpeed
 	#if it's 2 fingers, zoom
 	elif touchPoints.size() == 2:
 		var touch_point_positions = touchPoints.values()
