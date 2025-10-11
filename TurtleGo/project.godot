@@ -35,6 +35,10 @@ enabled=PackedStringArray("res://addons/PraxisMapperGPSPlugin/plugin.cfg")
 
 import/fbx/enabled=false
 
+[global_group]
+
+player="Player"
+
 [gui]
 
 theme/custom="res://assets/theme/my_theme.tres"

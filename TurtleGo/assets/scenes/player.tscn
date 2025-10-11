@@ -5,7 +5,7 @@
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_en8bj"]
 
-[node name="player" type="AnimatableBody3D"]
+[node name="player" type="AnimatableBody3D" groups=["player"]]
 sync_to_physics = false
 script = ExtResource("1_it8ag")
 
