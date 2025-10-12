@@ -35,15 +35,12 @@ var x: float	 #Mercator(lon)
 var z: float  #Mercator(lat)
 var r = 6378137.0
 
+
+
 ##################################
 #####parse osm file
 var xzMatrix:Array[PackedVector3Array] = [[]] #contains the waypoints from the tag <nd> in the loaded osm file
-var streetMatrix:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all street waypoints (all other streets and ways)
-var streetMatrix_primary:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all primary street waypoints (big streets)
-var streetMatrix_secondary:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all street waypoints (middle sized streets)
-var buildMatrix:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all building waypoints
-var waterMatrix:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all water waypoints
-var railMatrix:Array[PackedVector3Array] = [[]] #contains subset of xzMatrix: all railway waypoints
+
 var memberMatrix:Array[Array] = [[]] #contains the wayIDs from the tag <member> in the loaded osm file
 
 var xz_dict = {} #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
@@ -58,13 +55,12 @@ var listMember:bool = false #if true, buildMatrix, streetMatrix, etc. add subset
 
 ########
 ###calculate path3D
-var streetPath3D = preload("res://assets/scenes/instances/streetPath3D.tscn")
-var street_primary_Path3D = preload("res://assets/scenes/instances/street_primary_Path3D.tscn")
-var street_secondary_Path3D = preload("res://assets/scenes/instances/street_secondary_Path3D.tscn")
-var buildingPath3D = preload("res://assets/scenes/instances/buildingPath3D.tscn")
-var waterPath3D = preload("res://assets/scenes/instances/waterPath3D.tscn")
-var railPath3D = preload("res://assets/scenes/instances/railPath3D.tscn")
-var newPath3D
+const streetPath3D = preload("res://assets/scenes/instances/streetPath3D.tscn")
+const street_primary_Path3D = preload("res://assets/scenes/instances/street_primary_Path3D.tscn")
+const street_secondary_Path3D = preload("res://assets/scenes/instances/street_secondary_Path3D.tscn")
+const buildingPath3D = preload("res://assets/scenes/instances/buildingPath3D.tscn")
+const waterPath3D = preload("res://assets/scenes/instances/waterPath3D.tscn")
+const railPath3D = preload("res://assets/scenes/instances/railPath3D.tscn")
 
 ###########
 ###collectables on map
@@ -97,8 +93,8 @@ func _ready():
 
 		lat = 47.376398
 		lon = 8.539606
-		parseXML("res://assets/osmFiles/myMap.xml")
 
+		parseXML("res://assets/osmFiles/myMap.xml")
 		downloadMap(lat, lon)
 	else:
 		if FileAccess.file_exists(filePath):
@@ -172,19 +168,24 @@ func _on_request_completed(result, response_code, headers, body):
 
 func clearParsedData():
 	xzMatrix.clear()
-	buildMatrix.clear()
-	streetMatrix.clear()
-	streetMatrix_primary.clear()
-	streetMatrix_secondary.clear()
-	waterMatrix.clear()
-	railMatrix.clear()
+
 	memberMatrix.clear()
 	wayID_to_waypoint_dict.clear()
 	wayID = 0
 
 #read the osm data from openstreetmap.org
-func parseXML(_filePath):
+func parseXML(_filePath: String) -> void:
+
+	var streetMatrix:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all street waypoints (all other streets and ways)
+	var streetMatrix_primary:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all primary street waypoints (big streets)
+	var streetMatrix_secondary:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all street waypoints (middle sized streets)
+	var buildMatrix:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all building waypoints
+	var waterMatrix:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all water waypoints
+	var railMatrix:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all railway waypoints
+
+
 	clearParsedData()
+
 	var parser = XMLParser.new()
 	parser.open(_filePath)
 	var loopcount := 0
@@ -192,9 +193,9 @@ func parseXML(_filePath):
 
 		# every 100 nodes we let the engine run for one frame
 		# just to keep things moving
-		loopcount += 1
-		if loopcount % 100 == 0:
-			await get_tree().process_frame
+		#loopcount += 1
+		#if loopcount % 100 == 0:
+			#await get_tree().process_frame
 
 		if parser.get_node_type() == XMLParser.NODE_ELEMENT:
 			var node_name = parser.get_node_name()
@@ -265,7 +266,15 @@ func parseXML(_filePath):
 				var maxlon = float(parser.get_named_attribute_value_safe("maxlon"))
 				minmaxCoordinates(minlat, maxlat, minlon, maxlon)
 	$VBoxContainer/Label3.text = "finished parsing"
-	calcCurve3D()
+	calcCurve3D(
+		streetMatrix,
+		streetMatrix_primary,
+		streetMatrix_secondary,
+		buildMatrix,
+		waterMatrix,
+		railMatrix,
+		boundaryBox
+	)
 
 func mercatorCalc(_lat, _lon):
 	var _x = _lon * (PI/180) * r
@@ -326,7 +335,17 @@ func playerBounds(_x, _z):
 	else:
 		$VBoxContainer/Label5.text = "player within boundary box"
 
-func calcCurve3D():
+func calcCurve3D(
+	streetMatrix: Array[PackedVector3Array],
+	streetMatrix_primary: Array[PackedVector3Array],
+	streetMatrix_secondary: Array[PackedVector3Array],
+	buildMatrix: Array[PackedVector3Array],
+	waterMatrix: Array[PackedVector3Array],
+	railMatrix: Array[PackedVector3Array],
+	boundaryBox: float,
+):
+
+	var newPath3D
 	#delete all path3D instances of the old map
 	for way in 	$paths.get_children():
 		for path in way.get_children():
@@ -390,7 +409,7 @@ func calcCurve3D():
 	for i in boundary.size():
 			newPath3D.curve.add_point(boundary[i])
 
-	placeCollectables()
+	placeCollectables(streetMatrix)
 	#allow new map downloads only after the new map has been downloaded, parsed and drawn
 	#this prevents multiple requests at once
 	allow_new_mapRequest = true
@@ -402,7 +421,7 @@ func _on_button_pressed():
 		lat += 0.001
 		downloadMap(lat, lon)
 
-func placeCollectables():
+func placeCollectables(streetMatrix: Array[PackedVector3Array]) -> void:
 	#place the collectables on the map. Use deterministic pseudo-random numbers.
 	#The seed is the current date and time. This way, every user sees the same collectables on their device.
 	var date = Time.get_datetime_string_from_system()
