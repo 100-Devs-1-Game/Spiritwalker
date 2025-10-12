@@ -30,27 +30,22 @@ var z_max: float
 var x_center:float # x_center = (x_min+x_max)/2
 var z_center:float
 
-#variables for Mercator projection
-var x: float	 #Mercator(lon)
-var z: float  #Mercator(lat)
-var r = 6378137.0
+
+const r := 6378137.0
 
 
 
 ##################################
 #####parse osm file
-var xzMatrix:Array[PackedVector3Array] = [[]] #contains the waypoints from the tag <nd> in the loaded osm file
 
-var memberMatrix:Array[Array] = [[]] #contains the wayIDs from the tag <member> in the loaded osm file
 
-var xz_dict = {} #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
-var wayID_to_waypoint_dict = {}
 
-var matIDX:int = 0
+
+
+
 var memberIDX:int = -1
-var wayID:int
 
-var listWaypoints:bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
+
 var listMember:bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from memberMatrix
 
 ########
@@ -166,12 +161,9 @@ func _on_request_completed(result, response_code, headers, body):
 	$VBoxContainer/Label2.text = str(countm, url)
 	parseXML(filePath)
 
-func clearParsedData():
-	xzMatrix.clear()
 
-	memberMatrix.clear()
-	wayID_to_waypoint_dict.clear()
-	wayID = 0
+
+
 
 #read the osm data from openstreetmap.org
 func parseXML(_filePath: String) -> void:
@@ -184,7 +176,15 @@ func parseXML(_filePath: String) -> void:
 	var railMatrix:Array[PackedVector3Array] = [] #contains subset of xzMatrix: all railway waypoints
 
 
-	clearParsedData()
+
+	var matIDX:int = 0
+	var listWaypoints:bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
+	var wayID_to_waypoint_dict = {}
+	var wayID:int
+	var xzMatrix:Array[PackedVector3Array] = [] #contains the waypoints from the tag <nd> in the loaded osm file
+	var memberMatrix:Array[Array] = [[]] #contains the wayIDs from the tag <member> in the loaded osm file
+	var xz_dict = {} #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
+
 
 	var parser = XMLParser.new()
 	parser.open(_filePath)
@@ -200,10 +200,10 @@ func parseXML(_filePath: String) -> void:
 		if parser.get_node_type() == XMLParser.NODE_ELEMENT:
 			var node_name = parser.get_node_name()
 			if node_name == "node":
-				var id = int(parser.get_named_attribute_value_safe("id"))
-				var _lat = float(parser.get_named_attribute_value_safe("lat"))
-				var _lon = float(parser.get_named_attribute_value_safe("lon"))
-				mercatorProjection(id, _lat, _lon)
+				var id_xml = int(parser.get_named_attribute_value_safe("id"))
+				var lat_xml = float(parser.get_named_attribute_value_safe("lat"))
+				var lon_xml = float(parser.get_named_attribute_value_safe("lon"))
+				mercatorProjection(id_xml, lat_xml, lon_xml)
 
 			#if parsing the way nodes...
 			elif node_name == "way":
@@ -293,22 +293,28 @@ func minmaxCoordinates(_minlat, _maxlat, _minlon, _maxlon):
 	boundaryBox = (x_max - x_center) * boundaryDelimiter
 
 	# when we update the boundary box we also update the player again
-	mercatorProjection(0, lat, lon)
+	var vec := mercatorProjection(lat, lon)
+
+	if x_max  >= 1:
+			#...center player on the map
+		playerBounds(vec.x,vec.y)
 
 	#print_debug("boundary box: ", boundaryBox)
 
-func mercatorProjection(_id, _lat, _lon):
-	x = _lon * (PI/180) * r
-	z = log(tan(_lat * (PI/180)/2 + PI/4)) * r
+func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 
-	# if x&z are player coordinates...
-	if(_id == 0):
-		#...and the center of the map has been calculated from the osm xml file...
-		if x_max  >= 1:
-			#...center player on the map
-			playerBounds(x,z)
-	else:
-		xz_dict[_id] = Vector3(x - x_center,0,-(z - z_center))
+	var x := _lon * (PI/180.0) * r 					#Mercator(lon)
+	var z := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * r 	#Mercator(lat)
+
+	return Vector2(x,z)
+	## if x&z are player coordinates...
+	#if(_id == 0):
+		##...and the center of the map has been calculated from the osm xml file...
+		#if x_max  >= 1:
+			##...center player on the map
+			#playerBounds(x,z)
+	#else:
+		#xz_dict[_id] = Vector3(x - x_center,0,-(z - z_center))
 
 #center player on the map
 #and check if player is within boundary box (else download new map)

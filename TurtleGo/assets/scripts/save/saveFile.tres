@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_4q7o2")
 collectables = {
-"crystal_blue": 22,
-"crystal_green": 19,
-"crystal_pink": 31,
+"crystal_blue": 26,
+"crystal_green": 22,
+"crystal_pink": 32,
 "crystal_purple": 28
 }
