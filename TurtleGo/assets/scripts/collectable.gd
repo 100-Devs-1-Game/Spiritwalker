@@ -15,7 +15,6 @@ func _on_body_entered(body):
 		print("not player")
 		return
 
-	print("1", body)
 	var collectable:String = get_child(0).name
 	Signals.emit_signal("addCollectable", collectable)
 	queue_free()
@@ -23,13 +22,3 @@ func _on_body_entered(body):
 #remove from game after spawnTime
 func removeFromMap():
 	queue_free()
-
-
-func _on_body_shape_entered(body_rid: RID, body: Node3D, body_shape_index: int, local_shape_index: int) -> void:
-	print("2", body)
-	pass # Replace with function body.
-
-
-func _on_area_entered(area: Area3D) -> void:
-	print("3", area)
-	pass # Replace with function body.
