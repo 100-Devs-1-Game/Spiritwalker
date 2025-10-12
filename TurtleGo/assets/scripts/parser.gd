@@ -49,7 +49,7 @@ var countk = 0
 var countm = 0
 var offline = true
 
-var currentMapBoundary := BoundaryData.new()
+var currentMapData := MapData.new()
 
 class BoundaryData:
 	var minimum: Vector2
@@ -104,7 +104,7 @@ func _ready():
 			downloadMap(lat, lon)
 	else:
 		if FileAccess.file_exists(filePath):
-			parseXML(filePath)
+			parseAndReplaceMap(filePath)
 
 		else:
 			print("no file access")
@@ -139,7 +139,7 @@ func locationUpdate(location: Dictionary) -> void:
 	lat = _lat
 	lon = _lon
 
-	if currentMapBoundary.valid:
+	if currentMapData.boundaryData.valid:
 		var vec := mercatorProjection(lat, lon)
 		playerBounds(vec.x,vec.y)
 
@@ -184,20 +184,19 @@ func _on_request_completed(_result: int, _response_code: int, _headers: PackedSt
 	#this prevents multiple requests at once
 	allow_new_mapRequest = true
 
+
 func parseAndReplaceMap(_filePath: String) -> void:
 	var mapData := parseXML(_filePath)
 	if not mapData.boundaryData.valid:
 		return
 
 	$VBoxContainer/Label3.text = "finished parsing"
-	replaceMapScene(mapData)
-
-	currentMapBoundary = mapData.boundaryData
+	currentMapData = mapData
+	replaceMapScene($paths, mapData)
+	placeCollectables(mapData.streetMatrix)
 
 	var player_vector := mercatorProjection(lat, lon)
 	playerBounds(player_vector.x, player_vector.y)
-
-	placeCollectables(mapData.streetMatrix)
 
 #read the osm data from openstreetmap.org
 func parseXML(_filePath: String) -> MapData:
@@ -326,14 +325,13 @@ func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 #center player on the map
 #and check if player is within boundary box (else download new map)
 func playerBounds(_x, _z):
-	var player_x = _x - currentMapBoundary.center.x
-	var player_z = -(_z - currentMapBoundary.center.y)
-	print(_x, " - ", _z, " & center = ", currentMapBoundary.center)
+	var player_x = _x - currentMapData.boundaryData.center.x
+	var player_z = -(_z - currentMapData.boundaryData.center.y)
 
 	var _playerPos = Vector3(player_x , 0, player_z)
 	Signals.playerPos.emit(_playerPos)
 
-	if abs(player_x) >= abs(currentMapBoundary.get_length()):
+	if abs(player_x) >= abs(currentMapData.boundaryData.get_length()):
 		if allow_new_mapRequest == true:
 			countk = countk +1
 			new_mapRequest = true
@@ -341,7 +339,7 @@ func playerBounds(_x, _z):
 			$VBoxContainer/Label5.text = str(countk, "out of x bounds!")
 			print_debug("out of bounds")
 
-	elif abs(player_z) >= abs(currentMapBoundary.get_length()):
+	elif abs(player_z) >= abs(currentMapData.boundaryData.get_length()):
 		if allow_new_mapRequest == true:
 			countk = countk +1
 			new_mapRequest = true
@@ -350,10 +348,10 @@ func playerBounds(_x, _z):
 	else:
 		$VBoxContainer/Label5.text = "player within boundary box"
 
-func replaceMapScene(mapData: MapData):
+func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	var newPath3D
 	#delete all path3D instances of the old map
-	for way in 	$paths.get_children():
+	for way in 	mapNode.get_children():
 		for path in way.get_children():
 			path.queue_free()
 
@@ -367,42 +365,42 @@ func replaceMapScene(mapData: MapData):
 
 	for ways in mapData.streetMatrix.size():
 		newPath3D = streetPath3D.instantiate()
-		$paths/streets.add_child(newPath3D)
+		mapNode.get_node("streets").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.streetMatrix[ways].size():
 			newPath3D.curve.add_point(mapData.streetMatrix[ways][i])
 
 	for ways in mapData.streetMatrix_primary.size():
 		newPath3D = street_primary_Path3D.instantiate()
-		$paths/streets.add_child(newPath3D)
+		mapNode.get_node("streets").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.streetMatrix_primary[ways].size():
 			newPath3D.curve.add_point(mapData.streetMatrix_primary[ways][i])
 
 	for ways in mapData.streetMatrix_secondary.size():
 		newPath3D = street_secondary_Path3D.instantiate()
-		$paths/streets.add_child(newPath3D)
+		mapNode.get_node("streets").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.streetMatrix_secondary[ways].size():
 			newPath3D.curve.add_point(mapData.streetMatrix_secondary[ways][i])
 
 	for ways in mapData.buildMatrix.size():
 		newPath3D = buildingPath3D.instantiate()
-		$paths/buildings.add_child(newPath3D)
+		mapNode.get_node("buildings").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.buildMatrix[ways].size():
 			newPath3D.curve.add_point(mapData.buildMatrix[ways][i])
 
 	for ways in mapData.waterMatrix.size():
 		newPath3D = waterPath3D.instantiate()
-		$paths/water.add_child(newPath3D)
+		mapNode.get_node("water").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.waterMatrix[ways].size():
 			newPath3D.curve.add_point(mapData.waterMatrix[ways][i])
 
 	for ways in mapData.railMatrix.size():
 		newPath3D = railPath3D.instantiate()
-		$paths/railway.add_child(newPath3D)
+		mapNode.get_node("railway").add_child(newPath3D)
 		newPath3D.curve = Curve3D.new()
 		for i in mapData.railMatrix[ways].size():
 			newPath3D.curve.add_point(mapData.railMatrix[ways][i])
@@ -418,7 +416,7 @@ func replaceMapScene(mapData: MapData):
 	]
 
 	newPath3D = waterPath3D.instantiate()
-	$paths/boundary.add_child(newPath3D)
+	mapNode.get_node("boundary").add_child(newPath3D)
 	newPath3D.curve = Curve3D.new()
 	for i in boundary.size():
 			newPath3D.curve.add_point(boundary[i])
