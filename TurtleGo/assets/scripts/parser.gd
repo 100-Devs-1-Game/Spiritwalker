@@ -5,12 +5,10 @@ class_name Parser extends Node3D
 #######GPS using Praxismapper plugin
 var gps_provider
 var url_test = "https://api.openstreetmap.org/api/0.6/map?bbox=11.54,48.14,11.543,48.145" #link that downloads an xml file that can be drawn as a map
-#var url_base_official = "https://api.openstreetmap.org/api/0.6/map?bbox=" #official editing api of openstreetmap.org. This is only for testing purposes
-var url_base = "https://overpass-api.de/api/map?bbox=" #allows limited public use. Guideline: maximum of 1000 requests per day
+var url_base_official = "https://api.openstreetmap.org/api/0.6/map?bbox=" #official editing api of openstreetmap.org. This is only for testing purposes
+#var url_base = "https://overpass-api.de/api/map?bbox=" #allows limited public use. Guideline: maximum of 1000 requests per day
 var url
 const decimalPlace = "%.5f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
-const offset = 0.001 #offset from center of the map to the boundary
-const boundaryDelimiter = 0.7 #the boundary map is 90% of the map size (calculated from x_max)
 
 var filePath
 var allow_new_mapRequest = true
@@ -18,10 +16,10 @@ var new_mapRequest = true
 
 ##########################
 ###mercator calculation: transforms gps coordinates(lat,lon) into mercator coordinats(x,z)
-var lat:float
-var lon:float
+var lat: float
+var lon: float
 
-const r := 6378137.0
+const WORLD_RADIUS := 6378137.0
 
 ########
 ###calculate path3D
@@ -51,11 +49,110 @@ var offline = true
 
 var currentMapData := MapData.new()
 
+# I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
+const WORLD_MIN_GPS := Vector2(-85.05113, -180.0)
+const WORLD_MAX_GPS := Vector2(85.05113, 180.0)
+const WORLD_CENTER_GPS := WORLD_MAX_GPS + WORLD_MIN_GPS # a.k.a "Null Island" lat/lon is 0/0
+const WORLD_SIZE_GPS := WORLD_MAX_GPS - WORLD_MIN_GPS # the total lat/lon of the world
+
+# MERC = (Web) mercantor projection
+# web means 0,0 is top left, like in game engines. +x = right, +y = down
+static var WORLD_MIN_MERC: Vector2 = mercatorProjection(WORLD_MIN_GPS.x, WORLD_MIN_GPS.y)
+static var WORLD_MAX_MERC: Vector2 = mercatorProjection(WORLD_MAX_GPS.x, WORLD_MAX_GPS.y)
+static var WORLD_CENTER_MERC: Vector2 = WORLD_MAX_MERC + WORLD_MIN_MERC
+static var WORLD_SIZE_MERC: Vector2 = WORLD_MAX_MERC - WORLD_MIN_MERC
+
+# pokemon go seems to use a zoom level of 17? this is 2^17 = 131,000 "square" tiles horizontally and vertically
+# note that these tiles are "square" in the projected sense. that means they are not square in the real world
+# so the area of each tile changes depending on how close to the poles we are
+# with this, we're generate tiles that, at the equator, are about 300 meters (world range / 2^17 = 300ish meters squared)
+# ... I think?
+const WORLD_TILE_ZOOM_LEVEL := 18 # TEMP: WE'RE USING 18 FOR ~150m PER BOUNDARY - SIMILAR TO ~100m ORIGINAL TEST SIZE
+const WORLD_TILES_PER_SIDE := pow(2, WORLD_TILE_ZOOM_LEVEL)
+static var WORLD_TILE_DIMENSIONS_MERC := WORLD_SIZE_MERC / WORLD_TILES_PER_SIDE
+
+static func calculate_uv_from_merc(center_merc: Vector2) -> Vector2:
+	# we are UV unwrapping the world :D
+	return Vector2(
+		 # (percentage) how far is our center from the left edge of the world
+		(center_merc.x - WORLD_MIN_MERC.x) / WORLD_SIZE_MERC.x,
+		 # (percentage) how far is our center from the top edge of the world
+		(WORLD_MAX_MERC.y - center_merc.y) / WORLD_SIZE_MERC.y,
+	)
+
+static func calculate_tile_coordinate_from_uv(uv_position: Vector2) -> Vector2i:
+	# now we have our "uv coordinate" for the tile, on the earth
+	# but we need to figure out where that is in a single "tile" coordinate
+	# since we have WORLD_TILES_PER_SIDE... we just multiply them together
+	# e.g for a UV of 0.01: 0.01 * WORLD_TILES_PER_SIDE = 0.01 * 131,000(ish @ zoom 17) = tile 131 in this coordinate
+	# it could be a fractional number, in which case we floor it to "snap" to the nearest tile
+	# so it can kinda work like an index in to an array
+	# this is important for later, when we want to save and load the map
+	return Vector2i(
+		floori(uv_position.x * WORLD_TILES_PER_SIDE),
+		floori(uv_position.y * WORLD_TILES_PER_SIDE),
+	)
+
+static func calculate_uv_from_tile_coordinate(tile_coords: Vector2i) -> Vector2:
+	return Vector2(tile_coords) / WORLD_TILES_PER_SIDE
+
+static func calculate_merc_from_uv(uv_position: Vector2) -> Vector2:
+	return Vector2(
+		(uv_position.x * WORLD_SIZE_MERC.x) + WORLD_MIN_MERC.x,
+		 WORLD_MAX_MERC.y - (uv_position.y * WORLD_SIZE_MERC.y),
+	)
+
+# x = LON (horizontal)
+# y = LAT (vertical)
+# THIS IS NOT WEB - THIS IS GEOGRAPHIC
+# i.e the Y starts at 0 at the bottom and goes up as it increases
+static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
+	var x := _lon * (PI/180.0) * WORLD_RADIUS
+	var y := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * WORLD_RADIUS
+	return Vector2(x, y)
+
+# x = LON (horizontal)
+# y = LAT (vertical)
+# THIS IS NOT WEB - THIS IS GEOGRAPHIC
+# i.e the Y starts at 0 at the bottom and goes up as it increases
+static func inverseMercatorProjection(merc: Vector2) -> Vector2:
+	var _lon := (merc.x / WORLD_RADIUS) * (180.0 / PI)
+	var _lat := (2.0 * atan(exp(merc.y / WORLD_RADIUS)) - PI/2.0) * (180.0 / PI)
+	return Vector2(_lon, _lat)
+
+static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
+	var uv := calculate_uv_from_tile_coordinate(tile_coords)
+	var top_left_merc := calculate_merc_from_uv(uv)
+	#var test_top_left_merc_uv := calculate_uv_from_merc(top_left_merc)
+	#var test_top_left_merc := calculate_merc_from_uv(test_top_left_merc_uv)
+
+	# now we have the top-left corner of the tile, but we want its bounding box
+	# we have to calculate the width/height of the tile, but we know that already in mercantor projection
+	# because the mercantor space is a consistent square
+
+	var top_left_gps := inverseMercatorProjection(top_left_merc)
+	#var test_top_left_gps_merc := mercatorProjection(top_left_gps.y, top_left_gps.x)
+	var bottom_right_merc := top_left_merc + Vector2(WORLD_TILE_DIMENSIONS_MERC.x, -WORLD_TILE_DIMENSIONS_MERC.y)
+	var bottom_right_gps := inverseMercatorProjection(bottom_right_merc)
+	var lon_min := top_left_gps.x
+	var lat_max := top_left_gps.y
+	var lon_max := bottom_right_gps.x
+	var lat_min := bottom_right_gps.y
+
+	return Rect2(
+		Vector2(lon_min, lat_min), # top left
+		Vector2(lon_max - lon_min, lat_max - lat_min) # size
+	)
+
 class BoundaryData:
+	# this is all in mercantor projected coordinates
 	var minimum: Vector2
 	var maximum: Vector2
 	var center: Vector2
 	var valid: bool = false
+
+	# this is which tile of the world map it represents
+	var tile_coordinate: Vector2i
 
 	func _init(
 		p_minimum: Vector2 = Vector2.ZERO,
@@ -71,8 +168,15 @@ class BoundaryData:
 			&& center != Vector2.ZERO):
 				valid = true
 
-	func get_length() -> float:
-		return (maximum.x - center.x) * boundaryDelimiter
+		if valid:
+			var uv := Parser.calculate_uv_from_merc(center)
+			tile_coordinate = Parser.calculate_tile_coordinate_from_uv(uv)
+
+	func get_half_length() -> float:
+		return (maximum.x - center.x)
+
+	func get_dimensions() -> Vector2:
+		return maximum - minimum
 
 class MapData:
 	var streetMatrix: Array[PackedVector3Array] = [] #contains subset of xzMatrix: all street waypoints (all other streets and ways)
@@ -150,7 +254,18 @@ func locationUpdate(location: Dictionary) -> void:
 		downloadMap(lat,lon)
 		print ("download new map")
 
-func downloadMap(_lat,_lon):
+func downloadMap(_lat: float, _lon: float):
+	if _lat == 0.0 && _lon == 0.0:
+		push_error("tried to download a map for lat/lon of 0/0 - do we have a valid position yet?")
+		assert(false)
+		return
+
+	# instead of downloading that exact map location, we want to download that "tile" instead
+	# to do that, we convert the lat all the way to a tile coordinate and then back again
+	# so that we can get the tile that this gps coordinate is actually in
+	# note that this won't be centered on the player now, because the map center isn't based on the player position
+	# but rather the center of that tile
+
 	print("downloadMap - ", _lat, ", ", _lon)
 	if allow_new_mapRequest == false:
 		assert(false)
@@ -162,27 +277,39 @@ func downloadMap(_lat,_lon):
 	#this map request has been fullfilled
 	new_mapRequest = false
 
-	var _lat_min:String = decimalPlace % (_lat - offset)
-	var _lon_min:String = decimalPlace % (_lon - offset)
-	var _lat_max:String = decimalPlace % (_lat + offset)
-	var _lon_max:String = decimalPlace % (_lon + offset)
+	var actual_merc := mercatorProjection(_lat, _lon)
+	#var test_actual_merc_2 := inverseMercatorProjection(actual_merc)
+	var actual_uv := calculate_uv_from_merc(actual_merc)
+	#var test_mec := calculate_merc_from_uv(actual_uv)
+	var our_tile_coords := calculate_tile_coordinate_from_uv(actual_uv)
+	var tile_bbox := calculate_tile_bounding_box_gps(our_tile_coords)
+	var tile_center := tile_bbox.get_center()
+	var _lat_min:String = decimalPlace % (tile_center.y - (tile_bbox.size.y / 2.0))
+	var _lon_min:String = decimalPlace % (tile_center.x - (tile_bbox.size.x / 2.0))
+	var _lat_max:String = decimalPlace % (tile_center.y + (tile_bbox.size.y / 2.0))
+	var _lon_max:String = decimalPlace % (tile_center.x + (tile_bbox.size.x / 2.0))
 
-	url = url_base + _lon_min + "," + _lat_min + "," + _lon_max + "," + _lat_max
+	url = url_base_official + _lon_min + "," + _lat_min + "," + _lon_max + "," + _lat_max
 	print("REQUESTING ", url)
 	filePath = str(OS.get_user_data_dir() , "/myMap.xml")
 	$HTTPRequest.set_download_file(filePath)
 	$HTTPRequest.request(url)
 
 
-func _on_request_completed(_result: int, _response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
+func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
 	#Signals.emit_signal("mapUpdated", filePath)
-	print("REQUEST COMPLETED ", _response_code)
+	print("REQUEST COMPLETED ", response_code)
 	countm += 1
 	$VBoxContainer/Label2.text = str(countm, url)
-	parseAndReplaceMap(filePath)
 	#allow new map downloads only after the new map has been downloaded, parsed and drawn
 	#this prevents multiple requests at once
 	allow_new_mapRequest = true
+
+	if response_code != 200:
+		print("FAILED TO DOWNLOAD MAP")
+		return
+
+	parseAndReplaceMap(filePath)
 
 
 func parseAndReplaceMap(_filePath: String) -> void:
@@ -239,7 +366,8 @@ func parseXML(_filePath: String) -> MapData:
 
 			#if parsing the way nodes...
 			elif node_name == "way":
-				#store the key way id and the value ref in the wayID_to_waypoint_dict. This allows us to look up <relation> tags
+				#store the key way id and the value ref in the wayID_to_waypoint_dict.
+				# This allows us to look up <relation> tags
 				if wayID >= 1:
 					wayID_to_waypoint_dict[wayID] = xzMatrix[matIDX]
 				matIDX = matIDX + 1
@@ -281,24 +409,27 @@ func parseXML(_filePath: String) -> MapData:
 				if parser.get_named_attribute_value_safe("v") == "water":
 					for IDX in memberMatrix[memberIDX].size():
 						var _wayID = memberMatrix[memberIDX][IDX]
-						var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
-						mapData.waterMatrix.append(_nodeIDs)
+						if wayID_to_waypoint_dict.has(_wayID):
+							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
+							mapData.waterMatrix.append(_nodeIDs)
+						else:
+							print("tried to add water way with ID %s, but we don't know about it" % _wayID)
 
 			elif listMember && node_name == "tag":
 				if parser.get_named_attribute_value_safe("k") == "railway":
 					for IDX in memberMatrix[memberIDX].size():
 						var _wayID = memberMatrix[memberIDX][IDX]
-						var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
-						mapData.railMatrix.append(_nodeIDs)
+						if wayID_to_waypoint_dict.has(_wayID):
+							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
+							mapData.railMatrix.append(_nodeIDs)
+						else:
+							print("tried to add railway way with ID %s, but we don't know about it" % _wayID)
 
 			elif node_name == "bounds":
 				var minlat = float(parser.get_named_attribute_value_safe("minlat"))
 				var maxlat = float(parser.get_named_attribute_value_safe("maxlat"))
 				var minlon = float(parser.get_named_attribute_value_safe("minlon"))
 				var maxlon = float(parser.get_named_attribute_value_safe("maxlon"))
-
-				# when we update the boundary box we also update the player again
-				#...center player on the map
 				mapData.boundaryData = calculateBoundaryData(minlat, maxlat, minlon, maxlon)
 
 	return mapData
@@ -316,12 +447,6 @@ func calculateBoundaryData(_minlat, _maxlat, _minlon, _maxlon) -> BoundaryData:
 
 	return boundaryData
 
-func mercatorProjection(_lat: float, _lon: float) -> Vector2:
-	var x := _lon * (PI/180.0) * r 							#Mercator(lon)
-	var z := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * r 	#Mercator(lat)
-
-	return Vector2(x,z)
-
 #center player on the map
 #and check if player is within boundary box (else download new map)
 func playerBounds(_x, _z):
@@ -331,7 +456,7 @@ func playerBounds(_x, _z):
 	var _playerPos = Vector3(player_x , 0, player_z)
 	Signals.playerPos.emit(_playerPos)
 
-	if abs(player_x) >= abs(currentMapData.boundaryData.get_length()):
+	if abs(player_x) >= abs(currentMapData.boundaryData.get_half_length()):
 		if allow_new_mapRequest == true:
 			countk = countk +1
 			new_mapRequest = true
@@ -339,7 +464,7 @@ func playerBounds(_x, _z):
 			$VBoxContainer/Label5.text = str(countk, "out of x bounds!")
 			print_debug("out of bounds")
 
-	elif abs(player_z) >= abs(currentMapData.boundaryData.get_length()):
+	elif abs(player_z) >= abs(currentMapData.boundaryData.get_half_length()):
 		if allow_new_mapRequest == true:
 			countk = countk +1
 			new_mapRequest = true
@@ -406,7 +531,7 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 			newPath3D.curve.add_point(mapData.railMatrix[ways][i])
 
 	#draw boundary box. If player exits boundary box, a new map is downloaded
-	var boundaryBox: float = mapData.boundaryData.get_length()
+	var boundaryBox: float = mapData.boundaryData.get_half_length()
 	var boundary:PackedVector3Array = [
 		Vector3(boundaryBox,0,boundaryBox),
 		Vector3(-boundaryBox,0,boundaryBox),
