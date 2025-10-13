@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3 uid="uid://cm2dlr6bo6tac"]
+
+[ext_resource type="Script" uid="uid://8xww7wvxytvs" path="res://assets/scenes/tile.gd" id="1_troad"]
+
+[node name="tile" type="Node3D"]
+script = ExtResource("1_troad")
+
+[node name="collectables" type="Node3D" parent="."]
+
+[node name="buildings" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+
+[node name="water" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+
+[node name="railway" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="other" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+
+[node name="streets" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+
+[node name="boundary" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)

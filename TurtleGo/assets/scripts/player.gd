@@ -1,25 +1,33 @@
 class_name Player extends AnimatableBody3D
 
 @export var parser: Parser
+@onready var camera: Node3D = $Camera
+@onready var targetRotator: Node3D = $TargetRotator
 
 var speed := 0.25
 var rotationSpeed := 1.0
 var oldPosition: Vector3
 var newPosition: Vector3
-var targetRotator
 
 var time_since_last_update := 0.0
+var time_since_last_update_pos := 0.0
 
 func _ready():
 	Signals.playerPos.connect(updatePosition)
-	targetRotator = get_parent().get_node("TargetRotator")
 
 func updatePosition(pos: Vector3, teleport: bool):
+	time_since_last_update_pos = 0.0
+	#if newPosition == pos && !teleport:
+		#return
+
 	if teleport:
 		global_position = pos
-
+	#else:
 	oldPosition = global_position
 	newPosition = pos
+
+	$NewPosition.global_position = newPosition
+	$OldPosition.global_position = oldPosition
 
 func _process(delta: float):
 	# simulate infrequent GPS updates
@@ -32,30 +40,34 @@ func _process(delta: float):
 	else:
 		time_since_last_update += delta
 
-	if oldPosition != newPosition:
-		if targetRotator.position != newPosition:
-			targetRotator.look_at(newPosition,Vector3.UP)
-		#rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y,1)
-		global_position = oldPosition.lerp(newPosition, time_since_last_update)
+	time_since_last_update_pos += delta
+
+	# TODO fix rotation?
+	if newPosition && (targetRotator.position != newPosition):
+		targetRotator.global_position = global_position
+		targetRotator.look_at(newPosition, Vector3.UP)
+
+	rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y, 0.05)
+
+	if (oldPosition && newPosition) || (global_position != newPosition):
+		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 1.0)
 
 	var gps_offset: Vector2
 
-	# Move as long as the key/button is pressed.
-	if Input.is_action_pressed("ui_right"):
-		gps_offset.x = speed * delta * 0.001
-	elif Input.is_action_pressed("ui_left"):
-		gps_offset.x = speed * delta * 0.001 * -1.0
-	elif Input.is_action_pressed("ui_up"):
-		gps_offset.y = speed * delta * 0.001
-	elif Input.is_action_pressed("ui_down"):
-		gps_offset.y = speed * delta * 0.001 * -1.0
+	var input_dir := Vector2(
+		Input.get_axis(&"left", &"right"),
+		Input.get_axis(&"down", &"up"),
+	)
+	gps_offset = input_dir.normalized() * speed * delta * 0.005
 
 	parser.lon += gps_offset.x
-	parser.lat += gps_offset.y
+	parser.lat -= gps_offset.y
 
-	# force a location update if we're moving
-	if gps_offset != Vector2.ZERO:
-		parser.locationUpdate({
-			"latitude": parser.lat,
-			"longitude": parser.lon,
-		})
+	var mc := Parser.mercatorProjection(parser.lat, parser.lon) - parser.originMapData.boundaryData.center
+	$LatPosition.global_position = Vector3(
+		mc.x,
+		0.0,
+		mc.y
+	)
+
+	camera.global_position = global_position

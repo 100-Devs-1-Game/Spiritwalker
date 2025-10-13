@@ -1,6 +1,8 @@
 #@tool
 class_name Parser extends Node3D
 
+@onready var tiles := %tiles
+
 #####################################
 #######GPS using Praxismapper plugin
 var gps_provider
@@ -11,7 +13,7 @@ var url: String
 const decimalPlace := "%.5f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
 
 var filePath: String
-var allow_new_mapRequest := true
+var inflight_download_requests := 0
 var new_mapRequest := true
 
 ##########################
@@ -29,6 +31,8 @@ const street_secondary_Path3D = preload("res://assets/scenes/instances/street_se
 const buildingPath3D = preload("res://assets/scenes/instances/buildingPath3D.tscn")
 const waterPath3D = preload("res://assets/scenes/instances/waterPath3D.tscn")
 const railPath3D = preload("res://assets/scenes/instances/railPath3D.tscn")
+const TILE_SCENE = preload("res://assets/scenes/tile.tscn")
+const BOUNDARY_SCENE = preload("res://assets/scenes/instances/boundary.tscn")
 
 ###########
 ###collectables on map
@@ -47,8 +51,8 @@ var countk = 0
 var countm = 0
 var offline = true
 
+var originMapData := MapData.new()
 var currentMapData := MapData.new()
-var previousMapData := MapData.new()
 var already_replacing_map_scene := false
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
@@ -82,6 +86,7 @@ static func calculate_uv_from_merc(center_merc: Vector2) -> Vector2:
 		(WORLD_MAX_MERC.y - center_merc.y) / WORLD_SIZE_MERC.y,
 	)
 
+
 static func calculate_tile_coordinate_from_uv(uv_position: Vector2) -> Vector2i:
 	# now we have our "uv coordinate" for the tile, on the earth
 	# but we need to figure out where that is in a single "tile" coordinate
@@ -95,14 +100,17 @@ static func calculate_tile_coordinate_from_uv(uv_position: Vector2) -> Vector2i:
 		floori(uv_position.y * WORLD_TILES_PER_SIDE),
 	)
 
+
 static func calculate_uv_from_tile_coordinate(tile_coords: Vector2i) -> Vector2:
 	return Vector2(tile_coords) / WORLD_TILES_PER_SIDE
+
 
 static func calculate_merc_from_uv(uv_position: Vector2) -> Vector2:
 	return Vector2(
 		(uv_position.x * WORLD_SIZE_MERC.x) + WORLD_MIN_MERC.x,
 		 WORLD_MAX_MERC.y - (uv_position.y * WORLD_SIZE_MERC.y),
 	)
+
 
 # x = LON (horizontal)
 # y = LAT (vertical)
@@ -113,6 +121,7 @@ static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 	var y := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * WORLD_RADIUS
 	return Vector2(x, y)
 
+
 # x = LON (horizontal)
 # y = LAT (vertical)
 # THIS IS NOT WEB - THIS IS GEOGRAPHIC
@@ -121,6 +130,7 @@ static func inverseMercatorProjection(merc: Vector2) -> Vector2:
 	var _lon := (merc.x / WORLD_RADIUS) * (180.0 / PI)
 	var _lat := (2.0 * atan(exp(merc.y / WORLD_RADIUS)) - PI/2.0) * (180.0 / PI)
 	return Vector2(_lon, _lat)
+
 
 static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 	var uv := calculate_uv_from_tile_coordinate(tile_coords)
@@ -146,6 +156,7 @@ static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 		Vector2(lon_max - lon_min, lat_max - lat_min) # size
 	)
 
+
 func _ready():
 	Signals.mapUpdated.connect(parseXML)
 	Signals.enableGPS.connect(checkGPS)
@@ -156,14 +167,12 @@ func _ready():
 	if userOS == "Windows" || userOS == "Linux":
 		print(OS.get_name())
 
-		lat = 47.376398
-		lon = 8.539606
+		lat = 51.234286
+		lon = -2.999235
 		if has_map(lat, lon):
 			var filename := get_tile_filename_for_gps(lat, lon)
 			var success := parseAndReplaceMap(filename)
 			assert(success)
-		elif allow_new_mapRequest:
-			downloadMap(lat, lon)
 		else:
 			assert(false)
 	else:
@@ -203,9 +212,9 @@ func locationUpdate(location: Dictionary) -> void:
 
 	if currentMapData.boundaryData.valid:
 		var vec := mercatorProjection(lat, lon)
-		playerBounds(vec.x,vec.y)
-	elif allow_new_mapRequest && new_mapRequest:
-		downloadMap(lat,lon)
+		playerBounds(vec.x, vec.y)
+	elif inflight_download_requests == 0 && new_mapRequest:
+		downloadMap(lat, lon)
 		print ("download new map")
 
 	counti = counti+1
@@ -231,14 +240,6 @@ func has_map(_lat: float, _lon: float):
 	return has_map_xml(_lat, _lon) || has_map_resource(_lat, _lon)
 
 
-func loadMap(_lat: float, _lon: float) -> MapData:
-	var merc := mercatorProjection(_lat, _lon)
-	var uv := calculate_uv_from_merc(merc)
-	var tile := calculate_tile_coordinate_from_uv(uv)
-
-	return parseXML(OS.get_user_data_dir() + "/%sx-%sy.xml" % [tile.x, tile.y])
-
-
 func downloadMap(_lat: float, _lon: float):
 	if _lat == 0.0 && _lon == 0.0:
 		push_error("tried to download a map for lat/lon of 0/0 - do we have a valid position yet?")
@@ -252,13 +253,13 @@ func downloadMap(_lat: float, _lon: float):
 	# but rather the center of that tile
 
 	print("downloadMap - ", _lat, ", ", _lon)
-	if allow_new_mapRequest == false:
+	if inflight_download_requests != 0:
 		assert(false)
 		return
 
 	#it takes a bit do download and calculate the new map. Within that time new_mapRequest might get called multiple times within a short span of time.
 	#to avoid multiple downloads of the same map at the same time, set allow_new_mapRequest false until after the new map is drawn
-	allow_new_mapRequest = false
+	inflight_download_requests += 1
 	#this map request has been fullfilled
 	new_mapRequest = false
 
@@ -291,19 +292,20 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		print("FAILED TO DOWNLOAD MAP")
 		#allow new map downloads only after the new map has been downloaded, parsed and drawn
 		#this prevents multiple requests at once
-		allow_new_mapRequest = true
+		await get_tree().create_timer(1.0).timeout
+		inflight_download_requests -= 1
 		return
 
 	await get_tree().create_timer(1.0).timeout
 	var success := parseAndReplaceMap(filePath.trim_suffix(".xml"))
 	if !success:
 		await get_tree().create_timer(1.0).timeout
-		allow_new_mapRequest = true
-		downloadMap(lat, lon)
+		inflight_download_requests -= 1
+		if inflight_download_requests == 0:
+			downloadMap(lat, lon)
+		return
 
-	#allow new map downloads only after the new map has been downloaded, parsed and drawn
-	#this prevents multiple requests at once
-	allow_new_mapRequest = true
+	inflight_download_requests -= 1
 
 
 func parseAndReplaceMap(_filePath: String) -> bool:
@@ -311,6 +313,9 @@ func parseAndReplaceMap(_filePath: String) -> bool:
 
 	if ResourceLoader.exists(_filePath + ".tres"):
 		mapData = ResourceLoader.load(_filePath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
+		if not mapData:
+			print("how is that possible? ", _filePath + ".tres")
+			print_stack()
 
 	if not mapData or not mapData.boundaryData.valid:
 		if not FileAccess.file_exists(_filePath + ".xml"):
@@ -329,11 +334,11 @@ func parseAndReplaceMap(_filePath: String) -> bool:
 			&& mapData.streetMatrix_primary.is_empty()
 			&& mapData.streetMatrix_secondary.is_empty()
 			&& mapData.waterMatrix.is_empty()):
-				print("parsed xml but generated empty matrices: ", _filePath)
-				push_error("parsed xml but generated empty matrices: ", _filePath)
-				DirAccess.remove_absolute(_filePath + ".xml")
-				if allow_new_mapRequest:
-					downloadMap(lat, lon)
+				#print("parsed xml but generated empty matrices: ", _filePath)
+				#push_error("parsed xml but generated empty matrices: ", _filePath)
+				#DirAccess.remove_absolute(_filePath + ".xml")
+				#if inflight_download_requests == 0:
+					#downloadMap(lat, lon)
 				return false
 
 		mapData.resource_path = _filePath + ".tres"
@@ -344,26 +349,31 @@ func parseAndReplaceMap(_filePath: String) -> bool:
 		print("found .tres: ", _filePath)
 
 	$VBoxContainer/Label3.text = "finished parsing"
-	previousMapData = currentMapData
 	currentMapData = mapData
+	if !originMapData || !originMapData.boundaryData.valid:
+		originMapData = currentMapData
 
-	$paths.visible = false
-	$previousPaths.visible = false
+	var tilename := str(currentMapData.boundaryData.tile_coordinate)
+	var found_tile: Tile
+	for tile in tiles.get_children():
+		if tile.name == tilename:
+			found_tile = tile
 
-	replaceMapScene($paths, currentMapData)
-	placeCollectables($paths/collectables, currentMapData.streetMatrix)
+	if not found_tile:
+		found_tile = TILE_SCENE.instantiate()
+		found_tile.name = tilename
+		var offset := Vector2(
+			(currentMapData.boundaryData.center.x - originMapData.boundaryData.center.x) / 2.0,
+			(currentMapData.boundaryData.center.y - originMapData.boundaryData.center.y) / 2.0,
+		)
+		tiles.add_child(found_tile)
+		found_tile.global_position = Vector3(offset.x, 0.0, offset.y)
+		replaceMapScene(found_tile, currentMapData)
+		placeCollectables(found_tile.collectables, currentMapData.streetMatrix)
 
-	replaceMapScene($previousPaths, previousMapData)
-	placeCollectables($previousPaths/collectables, previousMapData.streetMatrix)
-
-	var offset := Vector2(
-		(previousMapData.boundaryData.center.x - currentMapData.boundaryData.center.x) / 2.0,
-		(currentMapData.boundaryData.center.y - previousMapData.boundaryData.center.y) / 2.0,
-	)
-	$previousPaths.global_position = Vector3(offset.x, 0, offset.y)
-
-	$paths.visible = true
-	$previousPaths.visible = true
+	#replaceMapScene(previousTile_node, previousMapData)
+	#placeCollectables(previousTile_node.collectables, previousMapData.streetMatrix)
+	#previousTile_node.global_position = Vector3(offset.x, 0, offset.y)
 
 	# now we've updated the map, let's tell the player where the new center is
 	# so they can move there
@@ -395,7 +405,6 @@ func parseXML(_filePath: String) -> MapData:
 		push_error(
 			"failed to open map (%s) when parsing with error %s" % [_filePath, result]
 		)
-		assert(false)
 		return mapData
 
 	while parser.read() != ERR_FILE_EOF:
@@ -426,7 +435,11 @@ func parseXML(_filePath: String) -> MapData:
 
 			elif node_name == "nd":
 				#...add the waypoints to xzMatrix
-				xzMatrix[matIDX].append(xz_dict[int(parser.get_named_attribute_value_safe("ref"))])
+				var id := int(parser.get_named_attribute_value_safe("ref"))
+				if xz_dict.has(id):
+					xzMatrix[matIDX].append(xz_dict[id])
+				else:
+					print("found nd with id '%s' but it's not in our dict" % id)
 				#then add subsets of xzMatrix to the buildMatrix, streetMatrix, etc.
 			elif listWaypoints && node_name == "tag":
 				if parser.get_named_attribute_value_safe("k") == "building":
@@ -485,30 +498,37 @@ func parseXML(_filePath: String) -> MapData:
 
 #center player on the map
 #and check if player is within boundary box (else download new map)
-func playerBounds(_x, _z):
-	var player_x = _x - currentMapData.boundaryData.center.x
-	var player_z = -(_z - currentMapData.boundaryData.center.y)
+func playerBounds(x_merc: float, y_merc: float):
+	var player_x = x_merc - originMapData.boundaryData.center.x
+	var player_z = y_merc - originMapData.boundaryData.center.y
+	if not originMapData.boundaryData.valid:
+		player_x = 0.0
+		player_z = 0.0
 
+	var player_distance_to_current_tile := Vector2(x_merc, y_merc) - currentMapData.boundaryData.center
 	var boundary_half_length := absf(currentMapData.boundaryData.get_half_length())
 	var needsNewMap := false
-	if absf(player_x) >= boundary_half_length:
+	if (absf(player_distance_to_current_tile.x) >= boundary_half_length
+		|| absf(player_distance_to_current_tile.y) >= boundary_half_length
+		|| currentMapData.boundaryData.valid == false):
 		needsNewMap = true
 
-	if absf(player_z) >= boundary_half_length:
-		needsNewMap = true
+	# if we are more than 3 tiles away from the current tile, force a teleport
+	var teleportPlayer := false
+	if player_distance_to_current_tile.length() > absf(currentMapData.boundaryData.get_half_length()) * 3.0:
+		teleportPlayer = true
+		print("TELEPORTING PLAYER AS WE ARE VERY FAR AWAY FOR A LERP")
 
-	if currentMapData.boundaryData.valid == false:
-		needsNewMap = true
+	# TODO: if we are more than... 100 tiles? away, then reset the origin?
 
 	var _playerPos = Vector3(player_x , 0, player_z)
-	Signals.playerPos.emit(_playerPos, needsNewMap)
+	Signals.playerPos.emit(_playerPos, teleportPlayer)
 
 	if !needsNewMap:
 		$VBoxContainer/Label5.text = "player within boundary box"
 		return
 
 	$VBoxContainer/Label5.text = str(countk, "out of bounds!")
-	print_debug("out of bounds")
 
 	var merc := mercatorProjection(lat, lon)
 	var uv := calculate_uv_from_merc(merc)
@@ -524,7 +544,7 @@ func playerBounds(_x, _z):
 			$VBoxContainer/Label5.text = "loaded saved map %s" % file
 			return
 
-	if allow_new_mapRequest == true:
+	if inflight_download_requests == 0:
 		countk = countk +1
 		new_mapRequest = true
 		downloadMap(lat, lon)
@@ -532,8 +552,10 @@ func playerBounds(_x, _z):
 
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	while (already_replacing_map_scene):
+		#mapNode.visible = false
 		await get_tree().process_frame
 
+	#mapNode.visible = true
 	already_replacing_map_scene = true
 
 	#delete all path3D instances of the old map
@@ -550,7 +572,7 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	var newPath3D := streetPath3D.instantiate() as Path3D
 
 	var boundaryBox: float = mapData.boundaryData.get_half_length()
-	var boundary:PackedVector3Array = [
+	var boundary: PackedVector3Array = [
 		Vector3(boundaryBox, 0, boundaryBox),
 		Vector3(-boundaryBox, 0, boundaryBox),
 		Vector3(-boundaryBox, 0, -boundaryBox),
@@ -558,9 +580,10 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
-	newPath3D = waterPath3D.instantiate()
+	newPath3D = BOUNDARY_SCENE.instantiate()
+	newPath3D.curve.set_point_count(boundary.size())
 	for i in boundary.size():
-			newPath3D.curve.add_point(boundary[i])
+			newPath3D.curve.set_point_position(i, boundary[i])
 	boundaryNode.add_child(newPath3D)
 
 	for ways in mapData.streetMatrix.size():
@@ -617,11 +640,12 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 			newPath3D.curve.set_point_position(i, mapData.railMatrix[ways][i])
 		railwayNode.add_child(newPath3D)
 
+	#mapNode.visible = true
 	already_replacing_map_scene = false
 
 #TESTING: boundary box - teleport player out of boundary box
 func _on_button_pressed():
-	if allow_new_mapRequest == true:
+	if inflight_download_requests == 0:
 		new_mapRequest = true
 		lat += 0.001
 		downloadMap(lat, lon)

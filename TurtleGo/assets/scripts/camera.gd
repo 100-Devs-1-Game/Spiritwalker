@@ -9,7 +9,6 @@ var zoom
 var zoomSpeed = 0.3
 
 func _input(event):
-
 	if event is InputEventScreenTouch:
 		handle_touch(event)
 	elif event is InputEventScreenDrag:

@@ -62,14 +62,14 @@ texture = SubResource("GradientTexture2D_0up4d")
 [node name="HTTPRequest" parent="parser" index="0"]
 download_file = "/home/turtle/.local/share/godot/app_userdata/TurtleGo/myMap.xml"
 
-[node name="Button" parent="parser" index="2"]
+[node name="Button" parent="parser" index="1"]
 offset_left = -645.0
 offset_top = 44.0
 offset_right = -47.0
 offset_bottom = 285.0
 icon = null
 
-[node name="VBoxContainer" parent="parser" index="3"]
+[node name="VBoxContainer" parent="parser" index="2"]
 anchors_preset = -1
 anchor_left = 0.31111112
 anchor_right = 1.2324075
@@ -110,12 +110,12 @@ environment = SubResource("Environment_t1d16")
 parser = NodePath("../parser")
 
 [node name="Camera" parent="player" instance=ExtResource("3_vpdq8")]
+transform = Transform3D(1, 0, 0, 0, 0.79572725, 0.60565513, 0, -0.60565513, 0.79572725, 0, 0, 0)
+top_level = true
 
 [node name="Camera3D" parent="player/Camera" index="0"]
-transform = Transform3D(1, 0, 0, 0, 0.743145, 0.669131, 0, -0.669131, 0.743145, 0, 65.725, 40.75)
+transform = Transform3D(1, 0, 0, 0, 0.7431447, 0.66913074, 0, -0.6691307, 0.74314475, 0, 275.80063, 232.49055)
 fov = 79.1
-
-[node name="TargetRotator" type="Node3D" parent="."]
 
 [editable path="UI"]
 [editable path="parser"]
