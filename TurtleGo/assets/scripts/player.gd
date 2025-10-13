@@ -25,7 +25,7 @@ func _process(delta: float):
 	if newPosition != null:
 		targetRotator.look_at(newPosition,Vector3.UP)
 		#rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y,1)
-		position = position.lerp(newPosition, delta * speed * 100.0)
+		position = newPosition#position.lerp(newPosition, delta * speed * 100.0)
 
 	var gps_offset: Vector2
 
