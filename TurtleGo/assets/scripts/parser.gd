@@ -48,6 +48,8 @@ var countm = 0
 var offline = true
 
 var currentMapData := MapData.new()
+var previousMapData := MapData.new()
+var already_replacing_map_scene := false
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
 const WORLD_MIN_GPS := Vector2(-85.05113, -180.0)
@@ -145,29 +147,28 @@ static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 	)
 
 func _ready():
-	Signals.connect("mapUpdated", parseXML)
-	Signals.connect("enableGPS", checkGPS)
+	Signals.mapUpdated.connect(parseXML)
+	Signals.enableGPS.connect(checkGPS)
 	$HTTPRequest.request_completed.connect(_on_request_completed)
 	filePath = str(OS.get_user_data_dir() , "/myMap")
 	var userOS = OS.get_name()
 
 	if userOS == "Windows" || userOS == "Linux":
 		print(OS.get_name())
-		#parseXML(filePath)
-		# Parse the XML in the project for the first load
-		# to make it faster
 
 		lat = 47.376398
 		lon = 8.539606
-
-		parseAndReplaceMap("res://assets/osmFiles/myMap")
-		if allow_new_mapRequest:
+		if has_map(lat, lon):
+			var filename := get_tile_filename_for_gps(lat, lon)
+			var success := parseAndReplaceMap(filename)
+			assert(success)
+		elif allow_new_mapRequest:
 			downloadMap(lat, lon)
-	else:
-		if FileAccess.file_exists(filePath):
-			parseAndReplaceMap(filePath)
-
 		else:
+			assert(false)
+	else:
+		var success := parseAndReplaceMap(filePath)
+		if not success:
 			print("no file access")
 
 		checkGPS()
@@ -203,13 +204,12 @@ func locationUpdate(location: Dictionary) -> void:
 	if currentMapData.boundaryData.valid:
 		var vec := mercatorProjection(lat, lon)
 		playerBounds(vec.x,vec.y)
+	elif allow_new_mapRequest && new_mapRequest:
+		downloadMap(lat,lon)
+		print ("download new map")
 
 	counti = counti+1
 	$VBoxContainer/Label.text = str(counti, " lat: " , lat, ", lon:  " ,lon)
-
-	if allow_new_mapRequest && new_mapRequest:
-		downloadMap(lat,lon)
-		print ("download new map")
 
 
 func get_tile_filename_for_gps(_lat: float, _lon: float) -> String:
@@ -283,18 +283,27 @@ func downloadMap(_lat: float, _lon: float):
 
 func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
 	#Signals.emit_signal("mapUpdated", filePath)
-	print("REQUEST COMPLETED ", response_code)
+	print("REQUEST COMPLETED WITH CODE %d FOR FILE %s" % [response_code, filePath])
 	countm += 1
 	$VBoxContainer/Label2.text = str(countm, url)
-	#allow new map downloads only after the new map has been downloaded, parsed and drawn
-	#this prevents multiple requests at once
-	allow_new_mapRequest = true
 
 	if response_code != 200:
 		print("FAILED TO DOWNLOAD MAP")
+		#allow new map downloads only after the new map has been downloaded, parsed and drawn
+		#this prevents multiple requests at once
+		allow_new_mapRequest = true
 		return
 
-	parseAndReplaceMap(filePath.trim_suffix(".xml"))
+	await get_tree().create_timer(1.0).timeout
+	var success := parseAndReplaceMap(filePath.trim_suffix(".xml"))
+	if !success:
+		await get_tree().create_timer(1.0).timeout
+		allow_new_mapRequest = true
+		downloadMap(lat, lon)
+
+	#allow new map downloads only after the new map has been downloaded, parsed and drawn
+	#this prevents multiple requests at once
+	allow_new_mapRequest = true
 
 
 func parseAndReplaceMap(_filePath: String) -> bool:
@@ -304,25 +313,65 @@ func parseAndReplaceMap(_filePath: String) -> bool:
 		mapData = ResourceLoader.load(_filePath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
 
 	if not mapData or not mapData.boundaryData.valid:
+		if not FileAccess.file_exists(_filePath + ".xml"):
+			print("failed to find .tres or xml: ", _filePath)
+			return false
+
 		print("failed to find .tres, parsing xml: ", _filePath)
 		mapData = parseXML(_filePath + ".xml")
 		if not mapData or not mapData.boundaryData.valid:
+			print("parsed xml but generated invalid boundary: ", _filePath)
 			return false
+
+		if (mapData.buildMatrix.is_empty()
+			&& mapData.railMatrix.is_empty()
+			&& mapData.streetMatrix.is_empty()
+			&& mapData.streetMatrix_primary.is_empty()
+			&& mapData.streetMatrix_secondary.is_empty()
+			&& mapData.waterMatrix.is_empty()):
+				print("parsed xml but generated empty matrices: ", _filePath)
+				push_error("parsed xml but generated empty matrices: ", _filePath)
+				DirAccess.remove_absolute(_filePath + ".xml")
+				if allow_new_mapRequest:
+					downloadMap(lat, lon)
+				return false
 
 		mapData.resource_path = _filePath + ".tres"
 		assert(mapData.resource_path)
-		print("saving tile to file: ", mapData.resource_path)
+		print("parsed xml, saving tile to file: ", mapData.resource_path)
 		ResourceSaver.save(mapData)
 	else:
 		print("found .tres: ", _filePath)
 
 	$VBoxContainer/Label3.text = "finished parsing"
+	previousMapData = currentMapData
 	currentMapData = mapData
-	replaceMapScene($paths, mapData)
-	placeCollectables(mapData.streetMatrix)
 
+	$paths.visible = false
+	$previousPaths.visible = false
+
+	replaceMapScene($paths, currentMapData)
+	placeCollectables($paths/collectables, currentMapData.streetMatrix)
+
+	replaceMapScene($previousPaths, previousMapData)
+	placeCollectables($previousPaths/collectables, previousMapData.streetMatrix)
+
+	var offset := Vector2(
+		(previousMapData.boundaryData.center.x - currentMapData.boundaryData.center.x) / 2.0,
+		(currentMapData.boundaryData.center.y - previousMapData.boundaryData.center.y) / 2.0,
+	)
+	$previousPaths.global_position = Vector3(offset.x, 0, offset.y)
+
+	$paths.visible = true
+	$previousPaths.visible = true
+
+	# now we've updated the map, let's tell the player where the new center is
+	# so they can move there
+	# and if they are outside the bounds after moving
+	# then we will load the next map
 	var player_vector := mercatorProjection(lat, lon)
 	playerBounds(player_vector.x, player_vector.y)
+
 	return true
 
 #read the osm data from openstreetmap.org
@@ -440,9 +489,6 @@ func playerBounds(_x, _z):
 	var player_x = _x - currentMapData.boundaryData.center.x
 	var player_z = -(_z - currentMapData.boundaryData.center.y)
 
-	var _playerPos = Vector3(player_x , 0, player_z)
-	Signals.playerPos.emit(_playerPos)
-
 	var boundary_half_length := absf(currentMapData.boundaryData.get_half_length())
 	var needsNewMap := false
 	if absf(player_x) >= boundary_half_length:
@@ -454,9 +500,15 @@ func playerBounds(_x, _z):
 	if currentMapData.boundaryData.valid == false:
 		needsNewMap = true
 
+	var _playerPos = Vector3(player_x , 0, player_z)
+	Signals.playerPos.emit(_playerPos, needsNewMap)
+
 	if !needsNewMap:
 		$VBoxContainer/Label5.text = "player within boundary box"
 		return
+
+	$VBoxContainer/Label5.text = str(countk, "out of bounds!")
+	print_debug("out of bounds")
 
 	var merc := mercatorProjection(lat, lon)
 	var uv := calculate_uv_from_merc(merc)
@@ -467,32 +519,27 @@ func playerBounds(_x, _z):
 
 	if has_map(lat, lon):
 		var file := get_tile_filename_for_gps(lat, lon)
-		$VBoxContainer/Label5.text = "loaded saved map %s" % file
 		var success := parseAndReplaceMap(file)
 		if success:
+			$VBoxContainer/Label5.text = "loaded saved map %s" % file
 			return
 
 	if allow_new_mapRequest == true:
 		countk = countk +1
 		new_mapRequest = true
 		downloadMap(lat, lon)
-		$VBoxContainer/Label5.text = str(countk, "out of bounds!")
-		print_debug("out of bounds")
+		return
 
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
-	var newPath3D
+	while (already_replacing_map_scene):
+		await get_tree().process_frame
+
+	already_replacing_map_scene = true
+
 	#delete all path3D instances of the old map
-	for way in 	mapNode.get_children():
+	for way in mapNode.get_children():
 		for path in way.get_children():
 			path.queue_free()
-
-	##calculate all ways at once, including water, boundaries, buildings, etc
-	#for ways in xzMatrix.size():
-		#newPath3D = waterPath3D.instantiate()
-		#$paths/other.add_child(newPath3D)
-		#newPath3D.curve = Curve3D.new()
-		#for i in xzMatrix[ways].size():
-			#newPath3D.curve.add_point(xzMatrix[ways][i])
 
 	var streetNode := mapNode.get_node("streets")
 	var buildingNode := mapNode.get_node("buildings")
@@ -500,63 +547,77 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	var railwayNode := mapNode.get_node("railway")
 	var boundaryNode := mapNode.get_node("boundary")
 
-	for ways in mapData.streetMatrix.size():
-		newPath3D = streetPath3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.streetMatrix[ways].size():
-			newPath3D.curve.add_point(mapData.streetMatrix[ways][i])
-		streetNode.add_child(newPath3D)
+	var newPath3D := streetPath3D.instantiate() as Path3D
 
-	for ways in mapData.streetMatrix_primary.size():
-		newPath3D = street_primary_Path3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.streetMatrix_primary[ways].size():
-			newPath3D.curve.add_point(mapData.streetMatrix_primary[ways][i])
-		streetNode.add_child(newPath3D)
-
-	for ways in mapData.streetMatrix_secondary.size():
-		newPath3D = street_secondary_Path3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.streetMatrix_secondary[ways].size():
-			newPath3D.curve.add_point(mapData.streetMatrix_secondary[ways][i])
-		streetNode.add_child(newPath3D)
-
-	for ways in mapData.buildMatrix.size():
-		newPath3D = buildingPath3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.buildMatrix[ways].size():
-			newPath3D.curve.add_point(mapData.buildMatrix[ways][i])
-		buildingNode.add_child(newPath3D)
-
-	for ways in mapData.waterMatrix.size():
-		newPath3D = waterPath3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.waterMatrix[ways].size():
-			newPath3D.curve.add_point(mapData.waterMatrix[ways][i])
-		waterNode.add_child(newPath3D)
-
-	for ways in mapData.railMatrix.size():
-		newPath3D = railPath3D.instantiate()
-		newPath3D.curve = Curve3D.new()
-		for i in mapData.railMatrix[ways].size():
-			newPath3D.curve.add_point(mapData.railMatrix[ways][i])
-		railwayNode.add_child(newPath3D)
-
-	#draw boundary box. If player exits boundary box, a new map is downloaded
 	var boundaryBox: float = mapData.boundaryData.get_half_length()
 	var boundary:PackedVector3Array = [
-		Vector3(boundaryBox,0,boundaryBox),
-		Vector3(-boundaryBox,0,boundaryBox),
-		Vector3(-boundaryBox,0,-boundaryBox),
-		Vector3(boundaryBox,0,-boundaryBox),
-		Vector3(boundaryBox,0,boundaryBox)
+		Vector3(boundaryBox, 0, boundaryBox),
+		Vector3(-boundaryBox, 0, boundaryBox),
+		Vector3(-boundaryBox, 0, -boundaryBox),
+		Vector3(boundaryBox, 0, -boundaryBox),
+		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
 	newPath3D = waterPath3D.instantiate()
-	newPath3D.curve = Curve3D.new()
 	for i in boundary.size():
 			newPath3D.curve.add_point(boundary[i])
 	boundaryNode.add_child(newPath3D)
+
+	for ways in mapData.streetMatrix.size():
+		await get_tree().process_frame
+
+		newPath3D = streetPath3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.streetMatrix[ways].size())
+		for i in mapData.streetMatrix[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.streetMatrix[ways][i])
+		streetNode.add_child(newPath3D)
+
+	for ways in mapData.streetMatrix_primary.size():
+		await get_tree().process_frame
+
+		newPath3D = street_primary_Path3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.streetMatrix_primary[ways].size())
+		for i in mapData.streetMatrix_primary[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.streetMatrix_primary[ways][i])
+		streetNode.add_child(newPath3D)
+
+	for ways in mapData.streetMatrix_secondary.size():
+		await get_tree().process_frame
+
+		newPath3D = street_secondary_Path3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.streetMatrix_secondary[ways].size())
+		for i in mapData.streetMatrix_secondary[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.streetMatrix_secondary[ways][i])
+		streetNode.add_child(newPath3D)
+
+	for ways in mapData.buildMatrix.size():
+		await get_tree().process_frame
+
+		newPath3D = buildingPath3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.buildMatrix[ways].size())
+		for i in mapData.buildMatrix[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.buildMatrix[ways][i])
+		buildingNode.add_child(newPath3D)
+
+	for ways in mapData.waterMatrix.size():
+		await get_tree().process_frame
+
+		newPath3D = waterPath3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.waterMatrix[ways].size())
+		for i in mapData.waterMatrix[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.waterMatrix[ways][i])
+		waterNode.add_child(newPath3D)
+
+	for ways in mapData.railMatrix.size():
+		await get_tree().process_frame
+
+		newPath3D = railPath3D.instantiate()
+		newPath3D.curve.set_point_count(mapData.railMatrix[ways].size())
+		for i in mapData.railMatrix[ways].size():
+			newPath3D.curve.set_point_position(i, mapData.railMatrix[ways][i])
+		railwayNode.add_child(newPath3D)
+
+	already_replacing_map_scene = false
 
 #TESTING: boundary box - teleport player out of boundary box
 func _on_button_pressed():
@@ -565,7 +626,7 @@ func _on_button_pressed():
 		lat += 0.001
 		downloadMap(lat, lon)
 
-func placeCollectables(streetMatrix: Array[PackedVector3Array]) -> void:
+func placeCollectables(parent: Node3D, streetMatrix: Array[PackedVector3Array]) -> void:
 	#place the collectables on the map. Use deterministic pseudo-random numbers.
 	#The seed is the current date and time. This way, every user sees the same collectables on their device.
 	var date = Time.get_datetime_string_from_system()
@@ -585,5 +646,5 @@ func placeCollectables(streetMatrix: Array[PackedVector3Array]) -> void:
 			if(randomInt <= 3):
 				var newCrystal = items[randomInt].instantiate()
 				newCrystal.scale = Vector3(10,10,10)
-				$collectables.add_child(newCrystal)
+				parent.add_child(newCrystal)
 				newCrystal.position = streetMatrix[ways][i]

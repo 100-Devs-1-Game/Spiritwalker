@@ -63,7 +63,6 @@ texture = SubResource("GradientTexture2D_0up4d")
 download_file = "/home/turtle/.local/share/godot/app_userdata/TurtleGo/myMap.xml"
 
 [node name="Button" parent="parser" index="2"]
-visible = true
 offset_left = -645.0
 offset_top = 44.0
 offset_right = -47.0

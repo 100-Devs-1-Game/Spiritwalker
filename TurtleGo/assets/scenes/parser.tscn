@@ -10,21 +10,29 @@ script = ExtResource("1_gpe21")
 download_file = "res://assets/osmFiles/myMap.json"
 
 [node name="paths" type="Node3D" parent="."]
+unique_name_in_owner = true
+
+[node name="collectables" type="Node3D" parent="paths"]
 
 [node name="buildings" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
 
 [node name="water" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 
 [node name="railway" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 
 [node name="other" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
 
 [node name="streets" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 
 [node name="boundary" type="Node3D" parent="paths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
 
 [node name="Button" type="Button" parent="."]
-visible = false
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -90,6 +98,26 @@ text = "checking if player is within bounds..."
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="collectables" type="Node3D" parent="."]
+[node name="previousPaths" type="Node3D" parent="."]
+
+[node name="collectables" type="Node3D" parent="previousPaths"]
+
+[node name="buildings" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+
+[node name="water" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+
+[node name="railway" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+
+[node name="other" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+
+[node name="streets" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+
+[node name="boundary" type="Node3D" parent="previousPaths"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
 
 [connection signal="pressed" from="Button" to="." method="_on_button_pressed"]

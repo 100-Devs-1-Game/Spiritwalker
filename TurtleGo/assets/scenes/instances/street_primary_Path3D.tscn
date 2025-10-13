@@ -3,6 +3,7 @@
 [ext_resource type="Material" uid="uid://bewnkiw5ovdx1" path="res://assets/textures/map/street/street_material.tres" id="1_p0dfl"]
 
 [sub_resource type="Curve3D" id="Curve3D_wytjb"]
+resource_local_to_scene = true
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 10),
 "tilts": PackedFloat32Array(0, 0)

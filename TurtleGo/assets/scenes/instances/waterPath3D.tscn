@@ -1,6 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://bdw76acsx7imj"]
 
 [sub_resource type="Curve3D" id="Curve3D_wytjb"]
+resource_local_to_scene = true
 _data = {
 "points": PackedVector3Array(0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 10),
 "tilts": PackedFloat32Array(0, 0)
