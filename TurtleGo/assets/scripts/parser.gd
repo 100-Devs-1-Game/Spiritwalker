@@ -173,8 +173,6 @@ func _ready():
 			var filename := get_tile_filename_for_gps(lat, lon)
 			var success := parseAndReplaceMap(filename)
 			assert(success)
-		else:
-			assert(false)
 	else:
 		var success := parseAndReplaceMap(filePath)
 		if not success:
