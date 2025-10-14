@@ -132,6 +132,14 @@ static func inverseMercatorProjection(merc: Vector2) -> Vector2:
 	return Vector2(_lon, _lat)
 
 
+func mercantorToGodotFromOrigin(merc: Vector2) -> Vector3:
+	return Vector3(
+		merc.x - originMapData.boundaryData.center.x,
+		0.0,
+		originMapData.boundaryData.center.y - merc.y,
+	)
+
+
 static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 	var uv := calculate_uv_from_tile_coordinate(tile_coords)
 	var top_left_merc := calculate_merc_from_uv(uv)
@@ -362,7 +370,7 @@ func parseAndReplaceMap(_filePath: String) -> bool:
 		found_tile.name = tilename
 		var offset := Vector2(
 			(currentMapData.boundaryData.center.x - originMapData.boundaryData.center.x) / 2.0,
-			(currentMapData.boundaryData.center.y - originMapData.boundaryData.center.y) / 2.0,
+			(originMapData.boundaryData.center.y - currentMapData.boundaryData.center.y) / 2.0,
 		)
 		tiles.add_child(found_tile)
 		found_tile.global_position = Vector3(offset.x, 0.0, offset.y)
@@ -497,11 +505,10 @@ func parseXML(_filePath: String) -> MapData:
 #center player on the map
 #and check if player is within boundary box (else download new map)
 func playerBounds(x_merc: float, y_merc: float):
-	var player_x = x_merc - originMapData.boundaryData.center.x
-	var player_z = y_merc - originMapData.boundaryData.center.y
+	var player_pos := mercantorToGodotFromOrigin(Vector2(x_merc, y_merc))
 	if not originMapData.boundaryData.valid:
-		player_x = 0.0
-		player_z = 0.0
+		player_pos.x = 0.0
+		player_pos.z = 0.0
 
 	var player_distance_to_current_tile := Vector2(x_merc, y_merc) - currentMapData.boundaryData.center
 	var boundary_half_length := absf(currentMapData.boundaryData.get_half_length())
@@ -511,16 +518,16 @@ func playerBounds(x_merc: float, y_merc: float):
 		|| currentMapData.boundaryData.valid == false):
 		needsNewMap = true
 
-	# if we are more than 3 tiles away from the current tile, force a teleport
+	# if we are more than N tiles away from the current tile, force a teleport
+	const N := 10.0
 	var teleportPlayer := false
-	if player_distance_to_current_tile.length() > absf(currentMapData.boundaryData.get_half_length()) * 3.0:
+	if player_distance_to_current_tile.length() > absf(currentMapData.boundaryData.get_half_length()) * N:
 		teleportPlayer = true
 		print("TELEPORTING PLAYER AS WE ARE VERY FAR AWAY FOR A LERP")
 
 	# TODO: if we are more than... 100 tiles? away, then reset the origin?
 
-	var _playerPos = Vector3(player_x , 0, player_z)
-	Signals.playerPos.emit(_playerPos, teleportPlayer)
+	Signals.playerPos.emit(player_pos, teleportPlayer)
 
 	if !needsNewMap:
 		$VBoxContainer/Label5.text = "player within boundary box"

@@ -43,7 +43,7 @@ func _process(delta: float):
 	time_since_last_update_pos += delta
 
 	# TODO fix rotation?
-	if newPosition && (targetRotator.position != newPosition):
+	if newPosition && (targetRotator.global_position != newPosition):
 		targetRotator.global_position = global_position
 		targetRotator.look_at(newPosition, Vector3.UP)
 
@@ -61,13 +61,10 @@ func _process(delta: float):
 	gps_offset = input_dir.normalized() * speed * delta * 0.005
 
 	parser.lon += gps_offset.x
-	parser.lat -= gps_offset.y
+	parser.lat += gps_offset.y
 
-	var mc := Parser.mercatorProjection(parser.lat, parser.lon) - parser.originMapData.boundaryData.center
-	$LatPosition.global_position = Vector3(
-		mc.x,
-		0.0,
-		mc.y
+	$LatPosition.global_position = parser.mercantorToGodotFromOrigin(
+		Parser.mercatorProjection(parser.lat, parser.lon)
 	)
 
 	camera.global_position = global_position
