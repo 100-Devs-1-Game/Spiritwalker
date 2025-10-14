@@ -45,6 +45,14 @@ text = "loading gps coordinates..."
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
+[node name="LabelTileCoord" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "tilecoords"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
 [node name="Label2" type="Label" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 10

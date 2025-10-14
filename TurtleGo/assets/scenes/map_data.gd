@@ -29,3 +29,13 @@ func updateBoundaryData(_minlat, _maxlat, _minlon, _maxlon):
 
 	boundaryData = BoundaryData.new(minimum, maximum, center)
 	assert(boundaryData.valid)
+
+func is_empty():
+	return (buildMatrix.is_empty()
+			&& railMatrix.is_empty()
+			&& streetMatrix.is_empty()
+			&& streetMatrix_primary.is_empty()
+			&& streetMatrix_secondary.is_empty()
+			&& streetMatrix_trunk.is_empty()
+			&& streetMatrix_pedestrian.is_empty()
+			&& waterMatrix.is_empty())

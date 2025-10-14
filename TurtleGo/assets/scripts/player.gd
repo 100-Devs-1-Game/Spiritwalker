@@ -17,12 +17,13 @@ func _ready():
 
 func updatePosition(pos: Vector3, teleport: bool):
 	time_since_last_update_pos = 0.0
-	#if newPosition == pos && !teleport:
-		#return
+	if (global_position - pos).length_squared() > 1000 * 1000:
+		teleport = true
+		print("TELEPORTING PLAYER AS WE ARE VERY FAR AWAY FOR A LERP")
 
 	if teleport:
 		global_position = pos
-	#else:
+
 	oldPosition = global_position
 	newPosition = pos
 

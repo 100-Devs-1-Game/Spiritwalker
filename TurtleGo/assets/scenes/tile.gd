@@ -7,3 +7,5 @@ class_name Tile extends Node3D
 @onready var other: Node3D = $other
 @onready var streets: Node3D = $streets
 @onready var boundary: Node3D = $boundary
+
+var mapData: MapData
