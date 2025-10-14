@@ -9,18 +9,18 @@ script = ExtResource("1_gpe21")
 download_file = "res://assets/osmFiles/myMap.json"
 
 [node name="Button" type="Button" parent="."]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -382.0
-offset_top = 40.0
-offset_right = 216.0
-offset_bottom = 281.0
-grow_horizontal = 0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -179.0
+offset_right = 419.0
+offset_bottom = 241.0
+grow_horizontal = 2
 scale = Vector2(0.6, 0.6)
+size_flags_horizontal = 4
+size_flags_vertical = 4
 text = "Teleport"
 icon_alignment = 1
-metadata/_edit_use_anchors_ = true
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 anchors_preset = 7

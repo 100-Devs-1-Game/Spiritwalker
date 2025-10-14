@@ -170,7 +170,8 @@ func _ready():
 	Signals.mapUpdated.connect(parseXML)
 	Signals.enableGPS.connect(checkGPS)
 	$HTTPRequest.request_completed.connect(_on_request_completed)
-	filePath = str(OS.get_user_data_dir() , "/myMap")
+	DirAccess.make_dir_recursive_absolute("user://maps/")
+	filePath = "user://maps/myMap"
 	var userOS = OS.get_name()
 
 	if userOS == "Windows" || userOS == "Linux":
@@ -232,7 +233,11 @@ func get_tile_filename_for_gps(_lat: float, _lon: float) -> String:
 	var merc := mercatorProjection(_lat, _lon)
 	var uv := calculate_uv_from_merc(merc)
 	var tile := calculate_tile_coordinate_from_uv(uv)
-	return OS.get_user_data_dir() + "/%sx-%sy" % [tile.x, tile.y]
+	return get_tile_filename_for_coords(tile)
+
+
+func get_tile_filename_for_coords(coords: Vector2i) -> String:
+	return "user://maps/%sx-%sy" % [coords.x, coords.y]
 
 
 func has_map_xml(_lat: float, _lon: float):
@@ -284,7 +289,7 @@ func downloadMap(_lat: float, _lon: float):
 
 	url = url_base_official + _lon_min + "," + _lat_min + "," + _lon_max + "," + _lat_max
 	print("REQUESTING ", url)
-	filePath = str(OS.get_user_data_dir() , "/%sx-%sy.xml" % [our_tile_coords.x, our_tile_coords.y])
+	filePath = get_tile_filename_for_coords(our_tile_coords) + ".xml"
 	$HTTPRequest.set_download_file(filePath)
 	$HTTPRequest.request(url)
 
