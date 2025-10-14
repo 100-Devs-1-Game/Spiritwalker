@@ -42,10 +42,8 @@ func _process(delta: float):
 
 	time_since_last_update_pos += delta
 
-	# TODO fix rotation?
-	if newPosition && (targetRotator.global_position != newPosition):
-		targetRotator.global_position = global_position
-		targetRotator.look_at(newPosition, Vector3.UP)
+	if newPosition && !oldPosition.is_equal_approx(newPosition):
+		targetRotator.look_at_from_position(oldPosition, newPosition, Vector3.UP)
 
 	rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y, 0.05)
 
