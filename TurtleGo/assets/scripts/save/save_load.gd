@@ -1,12 +1,16 @@
 extends Node
 
-var savedInventory:SavedInventory
-var collectCount = 0
+var savedInventory: SavedInventory
+var collectCount := 0
 
 func _ready():
-	savedInventory = SavedInventory.new()
-	Signals.connect("addCollectable", addInventory)
 	loadInventory()
+
+func get_save_filepath() -> String:
+	# we have to make the "save" folder if it doesn't exist
+	# otherwise we can't save it
+	DirAccess.make_dir_recursive_absolute("user://saves/")
+	return "user://saves/save.tres"
 
 func addInventory(_collectable):
 	if savedInventory.collectables.has(_collectable):
@@ -18,17 +22,29 @@ func addInventory(_collectable):
 		collectCount = 1
 		savedInventory.collectables[_collectable] = collectCount
 
-	Signals.emit_signal("updateCollectables", _collectable, collectCount)
+	Signals.updateCollectables.emit(_collectable, collectCount)
 	saveInventory()
 
 func saveInventory():
-	ResourceSaver.save(savedInventory, "res://assets/scripts/save/saveFile.tres")
+	if !savedInventory.resource_path:
+		savedInventory.resource_path = get_save_filepath()
+
+	ResourceSaver.save(savedInventory)
 
 func loadInventory():
-	savedInventory = load("res://assets/scripts/save/saveFile.tres") as SavedInventory
-	print_debug("loaded collectables: ", savedInventory.collectables)
+	if ResourceLoader.exists(get_save_filepath()):
+		savedInventory = ResourceLoader.load(get_save_filepath()) as SavedInventory
+
+	if not savedInventory:
+		savedInventory = SavedInventory.new()
+		savedInventory.reset()
+		savedInventory.resource_path = get_save_filepath()
+
+	Signals.addCollectable.connect(addInventory)
+
+	print_debug("loaded savegame: ", savedInventory.collectables)
 	updateUI()
 
 func updateUI():
 	for _coll in savedInventory.collectables:
-		Signals.emit_signal("updateCollectables", _coll, savedInventory.collectables[_coll])
+		Signals.updateCollectables.emit(_coll, savedInventory.collectables[_coll])
