@@ -28,6 +28,7 @@ const WORLD_RADIUS := 6378137.0
 const streetPath3D = preload("res://assets/scenes/instances/streetPath3D.tscn")
 const street_primary_Path3D = preload("res://assets/scenes/instances/street_primary_Path3D.tscn")
 const street_secondary_Path3D = preload("res://assets/scenes/instances/street_secondary_Path3D.tscn")
+const STREET_PEDESTRIAN_SCENE = preload("res://assets/scenes/instances/street_pedestrian.tscn")
 const buildingPath3D = preload("res://assets/scenes/instances/buildingPath3D.tscn")
 const waterPath3D = preload("res://assets/scenes/instances/waterPath3D.tscn")
 const railPath3D = preload("res://assets/scenes/instances/railPath3D.tscn")
@@ -448,18 +449,32 @@ func parseXML(_filePath: String) -> MapData:
 					print("found nd with id '%s' but it's not in our dict" % id)
 				#then add subsets of xzMatrix to the buildMatrix, streetMatrix, etc.
 			elif listWaypoints && node_name == "tag":
-				if parser.get_named_attribute_value_safe("k") == "building":
+				var key := parser.get_named_attribute_value_safe("k")
+				var value := parser.get_named_attribute_value_safe("v")
+				if key == "building":
 					mapData.buildMatrix.append(xzMatrix[matIDX])
-				elif parser.get_named_attribute_value_safe("k") == "highway":
-					if parser.get_named_attribute_value_safe("v") == "primary":
+				elif key == "highway":
+					if value == "trunk":
+						mapData.streetMatrix_trunk.append(xzMatrix[matIDX])
+					elif value == "primary":
 						mapData.streetMatrix_primary.append(xzMatrix[matIDX])
-					elif parser.get_named_attribute_value_safe("v") == "secondary":
+					elif value == "secondary":
 						mapData.streetMatrix_secondary.append(xzMatrix[matIDX])
+					elif (value == "pedestrian"
+						|| value == "living_street"
+						|| value == "footway"
+						|| value == "bridleway"
+						|| value == "steps"):
+						mapData.streetMatrix_pedestrian.append(xzMatrix[matIDX])
 					else:
 						mapData.streetMatrix.append(xzMatrix[matIDX])
-				elif parser.get_named_attribute_value_safe("k") == "waterway":
+				elif key == "footway":
+					# https://wiki.openstreetmap.org/wiki/Key:sidewalk
+					# TODO: figure out how to parse this properly
+					pass
+				elif key == "waterway":
 					mapData.waterMatrix.append(xzMatrix[matIDX])
-				elif parser.get_named_attribute_value_safe("k") == "railway":
+				elif key == "railway":
 					mapData.railMatrix.append(xzMatrix[matIDX])
 			#the <member> nodes gather many wayIDs with the same tag, i.e. "water"
 			#we list these wayIDs in the memberMatrix and append them to the appropiate subset Matrix, i.e. waterMatrix
@@ -555,6 +570,15 @@ func playerBounds(x_merc: float, y_merc: float):
 		downloadMap(lat, lon)
 		return
 
+func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
+	var scn := packed_scene.instantiate() as Path3D
+	assert(scn)
+	scn.curve.set_point_count(data.size())
+	for i in data.size():
+		scn.curve.set_point_position(i, data[i])
+	parent.add_child(scn)
+
+
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	while (already_replacing_map_scene):
 		#mapNode.visible = false
@@ -569,12 +593,23 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 			path.queue_free()
 
 	var streetNode := mapNode.get_node("streets")
+	assert(streetNode)
+	var streets_trunk := mapNode.get_node("streets_trunk")
+	assert(streets_trunk)
+	var streets_primary := mapNode.get_node("streets_primary")
+	assert(streets_primary)
+	var streets_secondary := mapNode.get_node("streets_secondary")
+	assert(streets_secondary)
+	var streets_pedestrian := mapNode.get_node("streets_pedestrian")
+	assert(streets_pedestrian)
 	var buildingNode := mapNode.get_node("buildings")
+	assert(buildingNode)
 	var waterNode := mapNode.get_node("water")
+	assert(waterNode)
 	var railwayNode := mapNode.get_node("railway")
+	assert(railwayNode)
 	var boundaryNode := mapNode.get_node("boundary")
-
-	var newPath3D := streetPath3D.instantiate() as Path3D
+	assert(boundaryNode)
 
 	var boundaryBox: float = mapData.boundaryData.get_half_length()
 	var boundary: PackedVector3Array = [
@@ -585,65 +620,39 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
-	newPath3D = BOUNDARY_SCENE.instantiate()
-	newPath3D.curve.set_point_count(boundary.size())
-	for i in boundary.size():
-			newPath3D.curve.set_point_position(i, boundary[i])
-	boundaryNode.add_child(newPath3D)
+	create_and_update_path(BOUNDARY_SCENE, boundaryNode, boundary)
 
 	for ways in mapData.streetMatrix.size():
 		await get_tree().process_frame
+		create_and_update_path(streetPath3D, streetNode, mapData.streetMatrix[ways])
 
-		newPath3D = streetPath3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.streetMatrix[ways].size())
-		for i in mapData.streetMatrix[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.streetMatrix[ways][i])
-		streetNode.add_child(newPath3D)
+	for ways in mapData.streetMatrix_trunk.size():
+		await get_tree().process_frame
+		create_and_update_path(street_primary_Path3D, streets_trunk, mapData.streetMatrix_trunk[ways])
 
 	for ways in mapData.streetMatrix_primary.size():
 		await get_tree().process_frame
-
-		newPath3D = street_primary_Path3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.streetMatrix_primary[ways].size())
-		for i in mapData.streetMatrix_primary[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.streetMatrix_primary[ways][i])
-		streetNode.add_child(newPath3D)
+		create_and_update_path(street_primary_Path3D, streets_primary, mapData.streetMatrix_primary[ways])
 
 	for ways in mapData.streetMatrix_secondary.size():
 		await get_tree().process_frame
+		create_and_update_path(street_secondary_Path3D, streets_secondary, mapData.streetMatrix_secondary[ways])
 
-		newPath3D = street_secondary_Path3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.streetMatrix_secondary[ways].size())
-		for i in mapData.streetMatrix_secondary[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.streetMatrix_secondary[ways][i])
-		streetNode.add_child(newPath3D)
+	for ways in mapData.streetMatrix_pedestrian.size():
+		await get_tree().process_frame
+		create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
 
 	for ways in mapData.buildMatrix.size():
 		await get_tree().process_frame
-
-		newPath3D = buildingPath3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.buildMatrix[ways].size())
-		for i in mapData.buildMatrix[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.buildMatrix[ways][i])
-		buildingNode.add_child(newPath3D)
+		create_and_update_path(buildingPath3D, buildingNode, mapData.buildMatrix[ways])
 
 	for ways in mapData.waterMatrix.size():
 		await get_tree().process_frame
-
-		newPath3D = waterPath3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.waterMatrix[ways].size())
-		for i in mapData.waterMatrix[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.waterMatrix[ways][i])
-		waterNode.add_child(newPath3D)
+		create_and_update_path(waterPath3D, waterNode, mapData.waterMatrix[ways])
 
 	for ways in mapData.railMatrix.size():
 		await get_tree().process_frame
-
-		newPath3D = railPath3D.instantiate()
-		newPath3D.curve.set_point_count(mapData.railMatrix[ways].size())
-		for i in mapData.railMatrix[ways].size():
-			newPath3D.curve.set_point_position(i, mapData.railMatrix[ways][i])
-		railwayNode.add_child(newPath3D)
+		create_and_update_path(railPath3D, railwayNode, mapData.railMatrix[ways])
 
 	#mapNode.visible = true
 	already_replacing_map_scene = false
