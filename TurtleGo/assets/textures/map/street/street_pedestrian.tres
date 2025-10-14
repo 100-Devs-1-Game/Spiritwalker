@@ -9,4 +9,3 @@ colors = PackedColorArray(0.22745098, 0.22745098, 0.22745098, 1, 0.22670674, 0.2
 gradient = SubResource("Gradient_qc7ci")
 fill_from = Vector2(1, 0)
 fill_to = Vector2(1, 1)
-repeat = 2
