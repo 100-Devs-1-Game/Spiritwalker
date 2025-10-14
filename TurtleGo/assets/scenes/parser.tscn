@@ -1,7 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://xpf0qlm4agdp"]
+[gd_scene load_steps=2 format=3 uid="uid://xpf0qlm4agdp"]
 
 [ext_resource type="Script" uid="uid://q8glv014moyu" path="res://assets/scripts/parser.gd" id="1_gpe21"]
-[ext_resource type="Texture2D" uid="uid://bs5ij5mauog3c" path="res://assets/textures/GUI/button/button_fancy.png" id="2_mtjj8"]
 
 [node name="parser" type="Node3D"]
 script = ExtResource("1_gpe21")
@@ -20,7 +19,6 @@ offset_bottom = 281.0
 grow_horizontal = 0
 scale = Vector2(0.6, 0.6)
 text = "Teleport"
-icon = ExtResource("2_mtjj8")
 icon_alignment = 1
 metadata/_edit_use_anchors_ = true
 
