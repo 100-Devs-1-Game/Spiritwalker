@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3 uid="uid://dwluph6oeb0dk"]
+
+[ext_resource type="Script" uid="uid://dhanusytidgd0" path="res://game/entities/creatures/creature.gd" id="1_86hky"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_86hky"]
+radius = 20.0
+
+[node name="Creature" type="Node3D"]
+script = ExtResource("1_86hky")
+
+[node name="PlayerTrigger" type="Area3D" parent="."]
+unique_name_in_owner = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerTrigger"]
+shape = SubResource("SphereShape3D_86hky")
+
+[node name="Visuals" type="Node3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(20, 0, 0, 0, 20, 0, 0, 0, 20, 0, 0, 0)

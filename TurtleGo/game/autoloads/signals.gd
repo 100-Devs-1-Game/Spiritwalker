@@ -5,3 +5,7 @@ signal mapUpdated #if true, gps.gd won't download the map. This prevents that gp
 signal playerPos(pos: Vector2, teleport: bool) #player location
 signal addCollectable
 signal updateCollectables
+
+
+signal player_entered_creature_range(creature: Creature)
+signal start_combat(create_data: CreatureData)

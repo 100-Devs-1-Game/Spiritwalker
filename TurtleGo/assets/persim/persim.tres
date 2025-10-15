@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" load_steps=2 format=3 uid="uid://ejwj470lyy68"]
+
+[ext_resource type="Texture2D" uid="uid://pyp37csoq8m6" path="res://assets/persim/persim.png" id="1_tu0wq"]
+
+[resource]
+resource_name = "persim"
+cull_mode = 2
+shading_mode = 0
+albedo_texture = ExtResource("1_tu0wq")

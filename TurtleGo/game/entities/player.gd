@@ -12,6 +12,8 @@ var newPosition: Vector3
 var time_since_last_update := 0.0
 var time_since_last_update_pos := 0.0
 
+var has_triggered_creature := false
+
 func _ready():
 	Signals.playerPos.connect(updatePosition)
 

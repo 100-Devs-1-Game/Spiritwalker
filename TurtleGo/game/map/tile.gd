@@ -1,6 +1,7 @@
 class_name Tile extends Node3D
 
 @onready var collectables: Node3D = $collectables
+@onready var creatures: Node3D = $creatures
 @onready var buildings: Node3D = $buildings
 @onready var water: Node3D = $water
 @onready var railway: Node3D = $railway

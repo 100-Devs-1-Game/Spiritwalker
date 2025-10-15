@@ -1,14 +1,25 @@
 [gd_scene load_steps=2 format=3 uid="uid://d1eifp05heqwp"]
 
-[ext_resource type="PackedScene" uid="uid://r0l7buoggfxi" path="res://assets/persim/persim.gltf" id="1_rrkhn"]
+[ext_resource type="PackedScene" uid="uid://d1cry2qg3e857" path="res://assets/persim/persim.gltf" id="1_rrkhn"]
 
 [node name="Persim" type="Node3D"]
 
 [node name="persim" parent="." instance=ExtResource("1_rrkhn")]
 
 [node name="Skeleton3D" parent="persim/Armature" index="0"]
-bones/5/position = Vector3(0.7990587, 0.87678975, 0.09948587)
+bones/1/rotation = Quaternion(-0.015023707, 2.8418504e-14, 4.2699945e-16, 0.9998872)
+bones/5/position = Vector3(0.7990587, 0.8767898, 0.09948586)
+bones/6/rotation = Quaternion(1.4028505e-07, -3.8154823e-08, 0.14725879, 0.989098)
 bones/7/rotation = Quaternion(-0.25437275, 0.45801276, 0.8363955, -0.16112542)
+bones/8/rotation = Quaternion(-0.25316918, -0.11528868, -0.07436608, 0.9576448)
+bones/10/rotation = Quaternion(-0.018353688, 0.06560336, -0.14653713, 0.98685676)
+bones/12/rotation = Quaternion(-0.16023323, -0.1890402, 0.020330222, 0.96859485)
 bones/13/rotation = Quaternion(0.22658975, 0.69733286, -0.649766, -0.2004699)
+bones/15/rotation = Quaternion(-0.08571315, -0.0037279965, 0.06440764, 0.9942289)
+bones/16/rotation = Quaternion(-0.071946174, -0.006351016, 0.01904893, 0.99720645)
+bones/17/rotation = Quaternion(0.19038613, 0.0040763393, 0.08714867, 0.977825)
+bones/18/rotation = Quaternion(0.40029982, 0.0048898202, 0.11953714, 0.90854114)
+bones/19/rotation = Quaternion(0.5342105, 0.0036811596, 0.008063824, 0.845305)
+bones/22/position = Vector3(2.0329208, 0.36838454, -2.111078)
 
 [editable path="persim"]

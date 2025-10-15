@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CreatureData" load_steps=3 format=3 uid="uid://bocgc13edyqd7"]
+
+[ext_resource type="PackedScene" uid="uid://d1eifp05heqwp" path="res://assets/persim/persim.tscn" id="1_16kps"]
+[ext_resource type="Script" uid="uid://cjq5m6oj4efj1" path="res://game/entities/creatures/creature_data.gd" id="1_kv86o"]
+
+[resource]
+script = ExtResource("1_kv86o")
+name = "Persim"
+scene = ExtResource("1_16kps")
+metadata/_custom_type_script = "uid://cjq5m6oj4efj1"

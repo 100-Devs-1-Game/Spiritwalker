@@ -15,31 +15,34 @@ var inflight_download_requests := 0
 var lat: float
 var lon: float
 
-const STREET_PATH_SCENE = preload("res://game/map/paths/street_other.tscn")
-const STREET_PRIMARY_SCENE = preload("res://game/map/paths/street_primary.tscn")
-const STREET_SECONDARY_SCENE = preload("res://game/map/paths/street_secondary.tscn")
-const STREET_PEDESTRIAN_SCENE = preload("res://game/map/paths/street_pedestrian.tscn")
-const BUILDING_SCENE = preload("res://game/map/paths/building.tscn")
-const WATER_SCENE = preload("res://game/map/paths/water.tscn")
-const RAILWAY_SCENE = preload("res://game/map/paths/railway.tscn")
-const TILE_SCENE = preload("res://game/map/tile.tscn")
-const BOUNDARY_SCENE = preload("res://game/map/paths/boundary.tscn")
+const STREET_PATH_SCENE := preload("res://game/map/paths/street_other.tscn")
+const STREET_PRIMARY_SCENE := preload("res://game/map/paths/street_primary.tscn")
+const STREET_SECONDARY_SCENE := preload("res://game/map/paths/street_secondary.tscn")
+const STREET_PEDESTRIAN_SCENE := preload("res://game/map/paths/street_pedestrian.tscn")
+const BUILDING_SCENE := preload("res://game/map/paths/building.tscn")
+const WATER_SCENE := preload("res://game/map/paths/water.tscn")
+const RAILWAY_SCENE := preload("res://game/map/paths/railway.tscn")
+const TILE_SCENE := preload("res://game/map/tile.tscn")
+const BOUNDARY_SCENE := preload("res://game/map/paths/boundary.tscn")
 
 ###########
 ###collectables on map
-const CRYSTAL_BLUE_SCENE = preload("res://game/entities/collectables/crystal_blue.tscn")
-const CRYSTAL_GREEN_SCENE = preload("res://game/entities/collectables/crystal_green.tscn")
-const CRYSTAL_ORANGE_SCENE = preload("res://game/entities/collectables/crystal_orange.tscn")
-const CRYSTAL_PINK_SCENE = preload("res://game/entities/collectables/crystal_pink.tscn")
-const CRYSTAL_PURPLE_SCENE = preload("res://game/entities/collectables/crystal_purple.tscn")
-const CRYSTAL_YELLOW_SCENE = preload("res://game/entities/collectables/crystal_yellow.tscn")
-const items = [CRYSTAL_BLUE_SCENE, CRYSTAL_GREEN_SCENE, CRYSTAL_PINK_SCENE, CRYSTAL_PURPLE_SCENE]
+const CRYSTAL_BLUE_SCENE := preload("res://game/entities/collectables/crystal_blue.tscn")
+const CRYSTAL_GREEN_SCENE := preload("res://game/entities/collectables/crystal_green.tscn")
+const CRYSTAL_ORANGE_SCENE := preload("res://game/entities/collectables/crystal_orange.tscn")
+const CRYSTAL_PINK_SCENE := preload("res://game/entities/collectables/crystal_pink.tscn")
+const CRYSTAL_PURPLE_SCENE := preload("res://game/entities/collectables/crystal_purple.tscn")
+const CRYSTAL_YELLOW_SCENE := preload("res://game/entities/collectables/crystal_yellow.tscn")
+const items := [CRYSTAL_BLUE_SCENE, CRYSTAL_GREEN_SCENE, CRYSTAL_PINK_SCENE, CRYSTAL_PURPLE_SCENE]
 #######
+const CREATURE_SCENE := preload("res://game/entities/creatures/creature.tscn")
+const CREATURE_PERSIM_DATA := preload("res://game/entities/creatures/creature_data_persim.tres") as CreatureData
+const CREATURES_DATA: Array[CreatureData] = [CREATURE_PERSIM_DATA]
 
 ###Testing
-var counti = 0
-var countm = 0
-var offline = true
+var counti := 0
+var countm := 0
+var offline := true
 
 var originMapData := MapData.new()
 var currentMapData := MapData.new()
@@ -561,7 +564,9 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 		tiles_loaded[mapData.boundaryData.tile_coordinate] = found_tile
 
 		replaceMapScene(found_tile, mapData)
-		placeCollectables(found_tile.collectables, mapData.streetMatrix)
+		$VBoxContainer/Label4.text = str(Time.get_datetime_string_from_system())
+		place_collectables(found_tile.collectables, mapData)
+		place_creatures(found_tile.creatures, mapData)
 
 	# force everything to update after we load a map
 	# e.g this can trigger other maps to load/download
@@ -832,25 +837,40 @@ func _on_button_pressed():
 	lat += 0.001
 	load_or_download_tiles(lat, lon)
 
-func placeCollectables(parent: Node3D, streetMatrix: Array[PackedVector3Array]) -> void:
-	#place the collectables on the map. Use deterministic pseudo-random numbers.
+
+func get_deterministic_rng(coords: Vector2i, other: int) -> RandomNumberGenerator:
 	#The seed is the current date and time. This way, every user sees the same collectables on their device.
-	var date = Time.get_datetime_string_from_system()
+	var date := Time.get_datetime_string_from_system()
 	#get date in the format YYYY-MM-DDTHH:MM:SS
 	#cut date to YYYY-MM-DDTHH:M and use as seed for pseudo-random generator of collectable placement
-	var seed_crystal = date.substr(0, 15)
+	var seed_data := "%s %s %s" % [date.substr(0, 15), coords, other]
+	var random := RandomNumberGenerator.new()
+	random.set_seed(hash(seed_data))
+	return random
 
-	var random = RandomNumberGenerator.new()
-	random.set_seed(int(seed_crystal))
-	var randomInt
 
-	$VBoxContainer/Label4.text = str(date)
+func place_collectables(parent: Node3D, map_data: MapData) -> void:
+	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 0)
 
-	for ways in streetMatrix.size():
-		for i in streetMatrix[ways].size():
-			randomInt = random.randi_range(0,50)
-			if(randomInt <= 3):
+	for ways in map_data.streetMatrix.size():
+		for i in map_data.streetMatrix[ways].size():
+			var randomInt := rng.randi_range(0, 50)
+			if (randomInt <= 3):
 				var newCrystal = items[randomInt].instantiate()
-				newCrystal.scale = Vector3(10,10,10)
+				newCrystal.scale = Vector3(10, 10, 10)
 				parent.add_child(newCrystal)
-				newCrystal.position = streetMatrix[ways][i]
+				newCrystal.position = map_data.streetMatrix[ways][i]
+
+
+func place_creatures(parent: Node3D, map_data: MapData) -> void:
+	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 1)
+
+	for ways in map_data.streetMatrix.size():
+		for i in map_data.streetMatrix[ways].size():
+			var randomInt := rng.randi_range(0, 50)
+			if randomInt <= 1:
+				var creature_data := CREATURES_DATA[rng.randi_range(0, CREATURES_DATA.size() - 1)]
+				var new_creature = CREATURE_SCENE.instantiate() as Creature
+				new_creature.data = creature_data
+				parent.add_child(new_creature)
+				new_creature.position = map_data.streetMatrix[ways][i]

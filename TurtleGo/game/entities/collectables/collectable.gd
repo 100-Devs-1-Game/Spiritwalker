@@ -15,10 +15,6 @@ func _on_body_entered(body):
 		print("not player")
 		return
 
-	var collectable:String = get_child(0).name
-	Signals.emit_signal("addCollectable", collectable)
-	queue_free()
-
-#remove from game after spawnTime
-func removeFromMap():
+	var collectable: String = get_child(0).name
+	Signals.addCollectable.emit(collectable)
 	queue_free()

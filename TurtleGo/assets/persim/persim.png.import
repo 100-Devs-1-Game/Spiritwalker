@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dal615g3elj8s"
-path.s3tc="res://.godot/imported/fruits.png-648f0852ad8c704402c0e5d3186c351a.s3tc.ctex"
-path.etc2="res://.godot/imported/fruits.png-648f0852ad8c704402c0e5d3186c351a.etc2.ctex"
+uid="uid://pyp37csoq8m6"
+path.s3tc="res://.godot/imported/persim.png-e9a84984354c7bc349a1d3047fbce84b.s3tc.ctex"
+path.etc2="res://.godot/imported/persim.png-e9a84984354c7bc349a1d3047fbce84b.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/persim/fruits.png"
-dest_files=["res://.godot/imported/fruits.png-648f0852ad8c704402c0e5d3186c351a.s3tc.ctex", "res://.godot/imported/fruits.png-648f0852ad8c704402c0e5d3186c351a.etc2.ctex"]
+source_file="res://assets/persim/persim.png"
+dest_files=["res://.godot/imported/persim.png-e9a84984354c7bc349a1d3047fbce84b.s3tc.ctex", "res://.godot/imported/persim.png-e9a84984354c7bc349a1d3047fbce84b.etc2.ctex"]
 
 [params]
 
@@ -38,5 +38,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=2048
+process/size_limit=0
 detect_3d/compress_to=0
