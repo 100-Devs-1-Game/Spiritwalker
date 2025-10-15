@@ -11,13 +11,13 @@ config_version=5
 [application]
 
 config/name="TurtleGo"
-run/main_scene="res://assets/scenes/main_scenes/map.tscn"
+run/main_scene="uid://si01x4rkoojd"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
-Signals="*res://assets/scripts/singletons/Signals.gd"
+Signals="*res://game/autoloads/signals.gd"
 
 [debug]
 
@@ -45,7 +45,7 @@ player="Player"
 
 [gui]
 
-theme/custom="res://assets/theme/my_theme.tres"
+theme/custom="res://game/ui/theme/my_theme.tres"
 
 [input]
 

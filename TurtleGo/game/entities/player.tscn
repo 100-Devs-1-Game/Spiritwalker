@@ -1,0 +1,44 @@
+[gd_scene load_steps=7 format=3 uid="uid://j8nd1qc28s7d"]
+
+[ext_resource type="Script" uid="uid://cpao4pn5prauf" path="res://game/entities/player.gd" id="1_it8ag"]
+[ext_resource type="PackedScene" uid="uid://yn5qd45rpv2a" path="res://assets/fishman/fishman.glb" id="1_tl7bd"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_en8bj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s027a"]
+albedo_color = Color(0.20784314, 0.8235294, 0.41568628, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4wcc8"]
+albedo_color = Color(0.47337472, 0.80662817, 0.9352143, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_14505"]
+albedo_color = Color(0.8440773, 0.2716742, 0.3468682, 1)
+
+[node name="Player" type="AnimatableBody3D" groups=["player"]]
+sync_to_physics = false
+script = ExtResource("1_it8ag")
+
+[node name="fishman" parent="." instance=ExtResource("1_tl7bd")]
+transform = Transform3D(-10, 0, -8.74228e-07, 0, 10, 0, 8.74228e-07, 0, -10, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(30, 0, 0, 0, 30, 0, 0, 0, 30, 0, 10.11, 0)
+shape = SubResource("CylinderShape3D_en8bj")
+
+[node name="NewPosition" type="CSGBox3D" parent="."]
+top_level = true
+size = Vector3(10, 10, 10)
+material = SubResource("StandardMaterial3D_s027a")
+
+[node name="LatPosition" type="CSGBox3D" parent="."]
+top_level = true
+size = Vector3(10, 10, 10)
+material = SubResource("StandardMaterial3D_4wcc8")
+
+[node name="OldPosition" type="CSGBox3D" parent="."]
+top_level = true
+size = Vector3(10, 10, 10)
+material = SubResource("StandardMaterial3D_14505")
+
+[node name="TargetRotator" type="Node3D" parent="."]
+top_level = true

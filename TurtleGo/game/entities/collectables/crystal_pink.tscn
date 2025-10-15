@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3 uid="uid://bnhy4qri6l3uv"]
+
+[ext_resource type="Script" uid="uid://btgafv3mjoron" path="res://game/entities/collectables/collectable.gd" id="1_wg46o"]
+[ext_resource type="ArrayMesh" uid="uid://cc5unk1odyta" path="res://assets/collectables/crystals.obj" id="2_r2wgy"]
+
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wvghp"]
+albedo_color = Color(0.798896, 0.429946, 0.475919, 1)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_nk047"]
+
+[node name="Area3D" type="Area3D"]
+script = ExtResource("1_wg46o")
+
+[node name="crystal_pink" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_r2wgy")
+surface_material_override/0 = SubResource("StandardMaterial3D_wvghp")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CylinderShape3D_nk047")
+
+[connection signal="area_entered" from="." to="." method="_on_area_entered"]
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_shape_entered" from="." to="." method="_on_body_shape_entered"]
