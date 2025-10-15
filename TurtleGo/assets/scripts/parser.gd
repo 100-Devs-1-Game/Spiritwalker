@@ -12,7 +12,7 @@ var url_base_official := "https://api.openstreetmap.org/api/0.6/map?bbox=" #offi
 #var url_base = "https://overpass-api.de/api/map?bbox=" #allows limited public use. Guideline: maximum of 1000 requests per day
 var url: String
 var active_download_tilecoords: Vector2i
-const decimalPlace := "%.5f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
+const decimalPlace := "%.6f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
 
 var filePath: String
 var inflight_download_requests := 0
@@ -55,6 +55,7 @@ var offline = true
 var originMapData := MapData.new()
 var currentMapData := MapData.new()
 var tilecoords_queued_for_download: Array[Vector2i]
+var tilecoords_queued_for_loading: Array[Vector2i]
 var tilecoords_being_replaced: Array[Vector2i]
 var player_previous_tilecoords: Vector2i
 
@@ -190,10 +191,127 @@ func _ready():
 		checkGPS()
 
 	# infinitely try and download our (and neighbouring) tiles
-	# this is because when jumping large distances, sometimes intermediates get skipped.. I think? idk
+	# this is... a fail safe, but it shouldn't be necessary
+	regularly_load_tiles()
+
+	# also keep unloading tiles that are far away from us
+	regularly_unload_tiles()
+
+	regularly_download_queued_tiles()
+	regularly_load_queued_tiles()
+
+func regularly_load_tiles():
 	while true:
 		await get_tree().create_timer(5).timeout
 		load_or_download_tiles(lat, lon)
+
+func regularly_unload_tiles():
+	while true:
+		await get_tree().create_timer(4).timeout
+		if not currentMapData or not currentMapData.boundaryData.valid:
+			continue
+
+		var distant_tiles: Array[Vector2i]
+		for coords in tiles_loaded:
+			if tile_is_distant(coords) && not tilecoords_being_replaced.has(coords):
+				distant_tiles.append(coords)
+
+		for distant_tile in distant_tiles:
+			unload_tile(distant_tile)
+
+func regularly_download_queued_tiles() -> void:
+	while true:
+		await get_tree().create_timer(1).timeout
+		if tilecoords_queued_for_download.is_empty():
+			continue
+
+		if inflight_download_requests != 0:
+			continue
+
+		# remove any tiles that are now too far away for us
+		tilecoords_queued_for_download = tilecoords_queued_for_download.filter(tile_is_not_distant)
+
+		if tilecoords_queued_for_download.is_empty():
+			continue
+
+		var coords := tilecoords_queued_for_download[0]
+		print("DL Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_download.size() - 1])
+		download_map_tilecoords(coords)
+		tilecoords_queued_for_loading.erase(coords)
+		tilecoords_queued_for_download.erase(coords)
+
+func regularly_load_queued_tiles() -> void:
+	while true:
+		await get_tree().create_timer(0.5).timeout
+		if tilecoords_queued_for_loading.is_empty():
+			continue
+
+		tilecoords_queued_for_loading = tilecoords_queued_for_loading.filter(tile_is_not_distant)
+		if tilecoords_queued_for_loading.is_empty():
+			continue
+
+		var coords := tilecoords_queued_for_loading[0]
+		tilecoords_queued_for_loading.erase(coords)
+
+		assert(has_map_tilecoords(coords))
+		var file := get_tile_filename_for_coords(coords)
+		var success := parseAndReplaceMap(file)
+		if success:
+			tilecoords_queued_for_download.erase(coords)
+			print("LD Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_loading.size()])
+			continue
+
+		# since it failed to load, queue it for download
+		if not tilecoords_queued_for_download.has(coords):
+			tilecoords_queued_for_download.append(coords)
+
+func tile_is_distant(coords: Vector2i) -> bool:
+	if !currentMapData || !currentMapData.boundaryData.valid:
+		# if we don't know where we are, assume everything is close to us
+		return false
+
+	const MAX_DISTANCE_IN_TILES := 3
+	var distance_vec := coords - currentMapData.boundaryData.tile_coordinate
+	return distance_vec.length_squared() > MAX_DISTANCE_IN_TILES * MAX_DISTANCE_IN_TILES
+
+func tile_is_not_distant(coords: Vector2i) -> bool:
+	return not tile_is_distant(coords)
+
+func unload_tile(coords: Vector2i) -> void:
+	if tilecoords_being_replaced.has(coords):
+		# could remove assert if function is called elsewhere
+		assert(false)
+		return
+
+	var is_loaded := tiles_loaded.has(coords)
+	if not is_loaded:
+		# could remove assert if function is called elsewhere
+		assert(false)
+		return
+
+	var found_tile: Tile = tiles_loaded[coords]
+	if not found_tile:
+		 # we should never have an invalid node here... did we forget to remove it from tiles_loaded after freeing the child?
+		assert(false)
+		tiles_loaded.erase(coords)
+		return
+
+	if not found_tile.mapData.boundaryData.valid:
+		# we should never have an invalid boundary for our tiles, even the empty ones
+		assert(false)
+
+	tilecoords_being_replaced.append(coords)
+	#print("UNLDD. TILE: %sx-%sy" % [coords.x, coords.y])
+	for child in found_tile.get_children():
+		if child:
+			for grandchild in child.get_children():
+				grandchild.queue_free()
+				await get_tree().process_frame
+			child.queue_free()
+			await get_tree().process_frame
+	found_tile.queue_free()
+	tiles_loaded.erase(coords)
+	tilecoords_being_replaced.erase(coords)
 
 func checkGPS():
 	var allowed = OS.request_permissions()
@@ -219,15 +337,12 @@ func locationUpdate(location: Dictionary) -> void:
 	lat = location["latitude"]
 	lon = location["longitude"]
 
+	var vec := mercatorProjection(lat, lon)
+	playerBounds(vec.x, vec.y)
 	if currentMapData && currentMapData.boundaryData.valid:
-		var vec := mercatorProjection(lat, lon)
-		playerBounds(vec.x, vec.y)
-		if currentMapData:
-			%LabelTileCoord.text = "tile %s" % currentMapData.boundaryData.tile_coordinate
-	else:
-		load_or_download_tiles(lat, lon)
+		%LabelTileCoord.text = "tile %s" % currentMapData.boundaryData.tile_coordinate
 
-	counti = counti+1
+	counti += 1
 	$VBoxContainer/Label.text = str(counti, " lat: " , lat, ", lon:  " ,lon)
 
 func get_tile_filename_for_gps(_lat: float, _lon: float) -> String:
@@ -241,27 +356,27 @@ func get_tile_filename_for_coords(coords: Vector2i) -> String:
 	return "user://maps/%sx-%sy" % [coords.x, coords.y]
 
 
-func has_map_xml(_lat: float, _lon: float):
+func has_map_xml(_lat: float, _lon: float) -> bool:
 	return FileAccess.file_exists(get_tile_filename_for_gps(_lat, _lon) + ".xml")
 
 
-func has_map_resource(_lat: float, _lon: float):
+func has_map_resource(_lat: float, _lon: float) -> bool:
 	return ResourceLoader.exists(get_tile_filename_for_gps(_lat, _lon) + ".tres")
 
 
-func has_map_xml_tilecoords(coords: Vector2i):
+func has_map_xml_tilecoords(coords: Vector2i) -> bool:
 	return FileAccess.file_exists(get_tile_filename_for_coords(coords) + ".xml")
 
 
-func has_map_resource_tilecoords(coords: Vector2i):
+func has_map_resource_tilecoords(coords: Vector2i) -> bool:
 	return ResourceLoader.exists(get_tile_filename_for_coords(coords) + ".tres")
 
 
-func has_map(_lat: float, _lon: float):
+func has_map(_lat: float, _lon: float) -> bool:
 	return has_map_xml(_lat, _lon) || has_map_resource(_lat, _lon)
 
 
-func has_map_tilecoords(coords: Vector2i):
+func has_map_tilecoords(coords: Vector2i) -> bool:
 	return has_map_xml_tilecoords(coords) || has_map_resource_tilecoords(coords)
 
 
@@ -271,7 +386,6 @@ func load_or_download_tiles(_lat: float, _lon: float):
 	var our_tile_coords := calculate_tile_coordinate_from_uv(actual_uv)
 
 	var tilecoords_to_check: Array[Vector2i]
-	var tilecoords_to_load: Array[Vector2i]
 
 	tilecoords_to_check.append(our_tile_coords + Vector2i(-1, -1)) #topleft
 	tilecoords_to_check.append(our_tile_coords + Vector2i(0, -1)) #top
@@ -287,6 +401,9 @@ func load_or_download_tiles(_lat: float, _lon: float):
 	tilecoords_to_check.append(our_tile_coords)
 
 	for coords in tilecoords_to_check:
+		if tiles_loaded.has(coords):
+			continue
+
 		if tilecoords_queued_for_download.has(coords):
 			# force these to the front because it might have been added before as a neighbouring tile
 			# note: since our direct tile is last in our array, we force it to the front last, prioritising it more
@@ -294,23 +411,35 @@ func load_or_download_tiles(_lat: float, _lon: float):
 			tilecoords_queued_for_download.insert(0, coords)
 			continue
 
-		if tiles_loaded.has(coords):
-			continue
-		tilecoords_to_load.append(coords)
-
-	for coords in tilecoords_to_load:
-		if has_map_tilecoords(coords):
-			var file := get_tile_filename_for_coords(coords)
-			var success := parseAndReplaceMap(file)
-			if success:
+		var is_queued_for_loading := tilecoords_queued_for_loading.has(coords)
+		var has_map_downloaded := has_map_tilecoords(coords)
+		if has_map_downloaded:
+			if our_tile_coords == coords:
+				# remove it from the queue in case it was added by someone else before
+				tilecoords_queued_for_loading.erase(coords)
+				# try and instantly load this tile since it's our priority
+				var file := get_tile_filename_for_coords(coords)
+				var success := parseAndReplaceMap(file)
+				if success:
+					# remove it from the queue in case it was added by someone else before
+					tilecoords_queued_for_download.erase(coords)
+					continue
+				# else fall through and go straight to priority download
+			elif not is_queued_for_loading:
+				tilecoords_queued_for_loading.insert(0, coords)
 				continue
-		print("QUEING TILE: %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_download.size()])
-		# if it was the direct tile which was requested (presumably the one we are on?)
-		# then we force it to the front of the queue
-		if our_tile_coords == coords:
-			tilecoords_queued_for_download.insert(0, coords)
-		else:
-			tilecoords_queued_for_download.append(coords)
+			elif is_queued_for_loading:
+				# repriotise the adjacent tiles to load towards the front
+				# our important one should have been loaded instantly and not queued
+				tilecoords_queued_for_loading.erase(coords)
+				tilecoords_queued_for_loading.insert(0, coords)
+				continue
+
+		# either we didn't have a map or we failed when loading it just now
+		# so let's queue up a download
+		# and prioritise these over the others
+		# (our main node is last to be inserted at the front, for most priority)
+		tilecoords_queued_for_download.insert(0, coords)
 
 func download_map_tilecoords(coords: Vector2i) -> void:
 	var uv := calculate_uv_from_tile_coordinate(coords)
@@ -371,12 +500,18 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 			downloadMap(lat, lon)
 		return
 
-	if tilecoords_queued_for_download.has(mapData.boundaryData.tile_coordinate):
-		print("LOADED TILE: %sx-%sy (%d remaining)" % [mapData.boundaryData.tile_coordinate.x, mapData.boundaryData.tile_coordinate.y, tilecoords_queued_for_download.size()])
+	if tilecoords_queued_for_download.has(mapData.boundaryData.tile_coordinate) || tilecoords_queued_for_loading.has(mapData.boundaryData.tile_coordinate):
+		print("LOADED TILE: %sx-%sy (%d & %d remaining)" % [
+			mapData.boundaryData.tile_coordinate.x,
+			mapData.boundaryData.tile_coordinate.y,
+			tilecoords_queued_for_loading.size(),
+			tilecoords_queued_for_download.size(),
+		])
 
 	if active_download_tilecoords != mapData.boundaryData.tile_coordinate:
 		push_warning("we downloaded the tile %s but we thought we were downloading the tile %s? how?" % [mapData.boundaryData.tile_coordinate, active_download_tilecoords])
 
+	tilecoords_queued_for_loading.erase(mapData.boundaryData.tile_coordinate)
 	tilecoords_queued_for_download.erase(mapData.boundaryData.tile_coordinate)
 	inflight_download_requests -= 1
 	active_download_tilecoords = Vector2.ZERO
@@ -434,6 +569,9 @@ func parseAndReplaceMap(_filePath: String) -> MapData:
 		replaceMapScene(found_tile, mapData)
 		placeCollectables(found_tile.collectables, mapData.streetMatrix)
 
+	# force everything to update after we load a map
+	# e.g this can trigger other maps to load/download
+	# and this also causes the player position to update
 	var player_vector := mercatorProjection(lat, lon)
 	playerBounds(player_vector.x, player_vector.y)
 	return mapData
@@ -564,8 +702,8 @@ func parseXML(_filePath: String) -> MapData:
 
 	return mapData
 
-#center player on the map
-#and check if player is within boundary box (else download new map)
+# handle the player exiting their current tile
+# and loading/downloading new maps as a result
 func playerBounds(x_merc: float, y_merc: float):
 	var player_pos := mercantorToGodotFromOrigin(Vector2(x_merc, y_merc))
 
@@ -590,10 +728,10 @@ func playerBounds(x_merc: float, y_merc: float):
 	Signals.playerPos.emit(player_pos, false)
 
 	if !needsNewMap:
-		$VBoxContainer/Label5.text = "player within boundary box! %d tiles queued" % tilecoords_queued_for_download.size()
+		$VBoxContainer/Label5.text = "player within boundary box! %d & %d tiles queued" % [tilecoords_queued_for_loading.size(), tilecoords_queued_for_download.size()]
 		return
 
-	$VBoxContainer/Label5.text = "out of bounds! %d tiles queued" % tilecoords_queued_for_download.size()
+	$VBoxContainer/Label5.text = "out of bounds! %d & %d tiles queued" % [tilecoords_queued_for_loading.size(), tilecoords_queued_for_download.size()]
 
 	load_or_download_tiles(lat, lon)
 
@@ -607,18 +745,20 @@ func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: Pac
 
 
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
-	# we limit it to N tiles loading at once to prevent freezes
-	const N := 3
-	while tilecoords_being_replaced.has(mapData.boundaryData.tile_coordinate) or tilecoords_being_replaced.size() >= N:
-		#mapNode.visible = false
-		await get_tree().create_timer(0.25).timeout
+	while is_instance_valid(mapNode) && tilecoords_being_replaced.has(mapData.boundaryData.tile_coordinate):
+		await get_tree().create_timer(0.25 + randf_range(0.25, 0.75)).timeout
 
+	# tried to replace a tile which was unloaded
+	if not is_instance_valid(mapNode):
+		return
 	#mapNode.visible = true
 	tilecoords_being_replaced.append(mapData.boundaryData.tile_coordinate)
 
 	#delete all path3D instances of the old map
 	for way in mapNode.get_children():
 		for path in way.get_children():
+			# this shouldn't be possible anymore, right?
+			assert(false)
 			path.queue_free()
 
 	var streetNode := mapNode.get_node("streets")
@@ -713,13 +853,3 @@ func placeCollectables(parent: Node3D, streetMatrix: Array[PackedVector3Array]) 
 				newCrystal.scale = Vector3(10,10,10)
 				parent.add_child(newCrystal)
 				newCrystal.position = streetMatrix[ways][i]
-
-func _physics_process(_delta: float) -> void:
-	if tilecoords_queued_for_download.is_empty():
-		return
-
-	if inflight_download_requests != 0:
-		return
-
-	print("DL Q. TILE : %sx-%sy (%d remaining)" % [tilecoords_queued_for_download[0].x, tilecoords_queued_for_download[0].y, tilecoords_queued_for_download.size() - 1])
-	download_map_tilecoords(tilecoords_queued_for_download[0])
