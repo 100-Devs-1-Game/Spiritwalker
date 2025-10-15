@@ -837,7 +837,7 @@ func placeCollectables(parent: Node3D, streetMatrix: Array[PackedVector3Array]) 
 	var date = Time.get_datetime_string_from_system()
 	#get date in the format YYYY-MM-DDTHH:MM:SS
 	#cut date to YYYY-MM-DDTHH:M and use as seed for pseudo-random generator of collectable placement
-	var seed_crystal = date.substr(0,15)
+	var seed_crystal = date.substr(0, 15)
 
 	var random = RandomNumberGenerator.new()
 	random.set_seed(int(seed_crystal))
