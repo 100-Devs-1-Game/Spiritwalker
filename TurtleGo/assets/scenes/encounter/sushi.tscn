@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://dtso0t8rp4y3m"]
 
-[ext_resource type="Script" path="res://assets/scripts/player.gd" id="1_8sanb"]
+[ext_resource type="Script" uid="uid://cpao4pn5prauf" path="res://assets/scripts/player.gd" id="1_8sanb"]
 [ext_resource type="PackedScene" uid="uid://2gubyj5vg1sb" path="res://assets/models/encounter/sushi.glb" id="2_hw43d"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_en8bj"]

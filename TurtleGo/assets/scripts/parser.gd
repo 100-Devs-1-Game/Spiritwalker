@@ -4,29 +4,18 @@ class_name Parser extends Node3D
 @onready var tiles := %tiles
 var tiles_loaded: Dictionary[Vector2i, Tile]
 
-#####################################
-#######GPS using Praxismapper plugin
 var gps_provider
 var url_test := "https://api.openstreetmap.org/api/0.6/map?bbox=11.54,48.14,11.543,48.145" #link that downloads an xml file that can be drawn as a map
 var url_base_official := "https://api.openstreetmap.org/api/0.6/map?bbox=" #official editing api of openstreetmap.org. This is only for testing purposes
 #var url_base = "https://overpass-api.de/api/map?bbox=" #allows limited public use. Guideline: maximum of 1000 requests per day
 var url: String
 var active_download_tilecoords: Vector2i
-const decimalPlace := "%.6f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
-
-var filePath: String
+var file_path: String
 var inflight_download_requests := 0
-
-##########################
-###mercator calculation: transforms gps coordinates(lat,lon) into mercator coordinats(x,z)
 var lat: float
 var lon: float
 
-const WORLD_RADIUS := 6378137.0
-
-########
-###calculate path3D
-const streetPath3D = preload("res://assets/scenes/instances/streetPath3D.tscn")
+const STREET_PATH_SCENE = preload("res://assets/scenes/instances/streetPath3D.tscn")
 const street_primary_Path3D = preload("res://assets/scenes/instances/street_primary_Path3D.tscn")
 const street_secondary_Path3D = preload("res://assets/scenes/instances/street_secondary_Path3D.tscn")
 const STREET_PEDESTRIAN_SCENE = preload("res://assets/scenes/instances/street_pedestrian.tscn")
@@ -121,6 +110,7 @@ static func calculate_merc_from_uv(uv_position: Vector2) -> Vector2:
 # THIS IS NOT WEB - THIS IS GEOGRAPHIC
 # i.e the Y starts at 0 at the bottom and goes up as it increases
 static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
+	const WORLD_RADIUS := 6378137.0
 	var x := _lon * (PI/180.0) * WORLD_RADIUS
 	var y := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * WORLD_RADIUS
 	return Vector2(x, y)
@@ -131,6 +121,7 @@ static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 # THIS IS NOT WEB - THIS IS GEOGRAPHIC
 # i.e the Y starts at 0 at the bottom and goes up as it increases
 static func inverseMercatorProjection(merc: Vector2) -> Vector2:
+	const WORLD_RADIUS := 6378137.0
 	var _lon := (merc.x / WORLD_RADIUS) * (180.0 / PI)
 	var _lat := (2.0 * atan(exp(merc.y / WORLD_RADIUS)) - PI/2.0) * (180.0 / PI)
 	return Vector2(_lon, _lat)
@@ -174,7 +165,7 @@ func _ready():
 	Signals.enableGPS.connect(checkGPS)
 	$HTTPRequest.request_completed.connect(_on_request_completed)
 	DirAccess.make_dir_recursive_absolute("user://maps/")
-	filePath = "user://maps/myMap"
+	file_path = "user://maps/myMap"
 	var userOS = OS.get_name()
 
 	if userOS == "Windows" || userOS == "Linux":
@@ -184,7 +175,7 @@ func _ready():
 		lon = -2.999235
 		load_or_download_tiles(lat, lon)
 	else:
-		var success := parseAndReplaceMap(filePath)
+		var success := parseAndReplaceMap(file_path)
 		if not success:
 			print("no file access")
 
@@ -464,20 +455,21 @@ func downloadMap(_lat: float, _lon: float):
 	var our_tile_coords := calculate_tile_coordinate_from_uv(actual_uv)
 	var tile_bbox := calculate_tile_bounding_box_gps(our_tile_coords)
 	var tile_center := tile_bbox.get_center()
-	var _lat_min:String = decimalPlace % (tile_center.y - (tile_bbox.size.y / 2.0))
-	var _lon_min:String = decimalPlace % (tile_center.x - (tile_bbox.size.x / 2.0))
-	var _lat_max:String = decimalPlace % (tile_center.y + (tile_bbox.size.y / 2.0))
-	var _lon_max:String = decimalPlace % (tile_center.x + (tile_bbox.size.x / 2.0))
+	const decimal_places := "%.6f" #the number of decimal places the latitude/longitude has in the api request. 5 decimal places loads a map of ~200mx200m around the player. 3 decimal places loads about 2000mx2000m
+	var _lat_min:String = decimal_places % (tile_center.y - (tile_bbox.size.y / 2.0))
+	var _lon_min:String = decimal_places % (tile_center.x - (tile_bbox.size.x / 2.0))
+	var _lat_max:String = decimal_places % (tile_center.y + (tile_bbox.size.y / 2.0))
+	var _lon_max:String = decimal_places % (tile_center.x + (tile_bbox.size.x / 2.0))
 	active_download_tilecoords = our_tile_coords
 	url = url_base_official + _lon_min + "," + _lat_min + "," + _lon_max + "," + _lat_max
 	print("DOWNLOADING: %sx-%sy          (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, url])
-	filePath = get_tile_filename_for_coords(our_tile_coords) + ".xml"
-	$HTTPRequest.set_download_file(filePath)
+	file_path = get_tile_filename_for_coords(our_tile_coords) + ".xml"
+	$HTTPRequest.set_download_file(file_path)
 	$HTTPRequest.request(url)
 
 
 func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
-	#Signals.emit_signal("mapUpdated", filePath)
+	#Signals.emit_signal("mapUpdated", file_path)
 	print("DOWNLOADED : %sx-%sy CODE %d (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, response_code, url])
 	countm += 1
 	$VBoxContainer/Label2.text = str(countm, url)
@@ -492,7 +484,7 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	# pause for a second before we let anyone download another map
 	await get_tree().create_timer(1.0).timeout
 
-	var mapData := parseAndReplaceMap(filePath.trim_suffix(".xml"))
+	var mapData := parseAndReplaceMap(file_path.trim_suffix(".xml"))
 	if !mapData:
 		inflight_download_requests -= 1
 		if inflight_download_requests == 0:
@@ -517,33 +509,33 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	active_download_tilecoords = Vector2.ZERO
 
 
-func parseAndReplaceMap(_filePath: String) -> MapData:
+func parseAndReplaceMap(_file_path: String) -> MapData:
 	var mapData := MapData.new()
 
-	if ResourceLoader.exists(_filePath + ".tres"):
-		mapData = ResourceLoader.load(_filePath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
+	if ResourceLoader.exists(_file_path + ".tres"):
+		mapData = ResourceLoader.load(_file_path + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
 		if not mapData:
-			print("how is that possible? ", _filePath + ".tres")
+			print("how is that possible? ", _file_path + ".tres")
 			print_stack()
 
 	if not mapData or not mapData.boundaryData.valid:
-		if not FileAccess.file_exists(_filePath + ".xml"):
-			print("failed to find .tres or xml: ", _filePath)
+		if not FileAccess.file_exists(_file_path + ".xml"):
+			print("failed to find .tres or xml: ", _file_path)
 			return null
 
-		#print("failed to find .tres, parsing xml: ", _filePath)
-		mapData = parseXML(_filePath + ".xml")
+		#print("failed to find .tres, parsing xml: ", _file_path)
+		mapData = parseXML(_file_path + ".xml")
 		if not mapData or not mapData.boundaryData.valid:
-			print("parsed xml but generated invalid boundary: ", _filePath)
+			print("parsed xml but generated invalid boundary: ", _file_path)
 			return null
 
-		mapData.resource_path = _filePath + ".tres"
+		mapData.resource_path = _file_path + ".tres"
 		assert(mapData.resource_path)
 		#print("parsed xml, saving tile to file: ", mapData.resource_path)
 		ResourceSaver.save(mapData)
 	else:
 		pass
-		#print("found .tres: ", _filePath)
+		#print("found .tres: ", _file_path)
 
 	$VBoxContainer/Label3.text = "finished parsing"
 	var player_current_tilecoords := calculate_tile_coordinate_from_uv(calculate_uv_from_merc(mercatorProjection(lat, lon)))
@@ -577,7 +569,7 @@ func parseAndReplaceMap(_filePath: String) -> MapData:
 	return mapData
 
 #read the osm data from openstreetmap.org
-func parseXML(_filePath: String) -> MapData:
+func parseXML(_file_path: String) -> MapData:
 	var matIDX: int = 0
 	var listWaypoints: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
 	var listMember: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from memberMatrix
@@ -592,10 +584,10 @@ func parseXML(_filePath: String) -> MapData:
 	var mapData := MapData.new()
 
 	var parser = XMLParser.new()
-	var result := parser.open(_filePath)
+	var result := parser.open(_file_path)
 	if result != OK:
 		push_error(
-			"failed to open map (%s) when parsing with error %s" % [_filePath, result]
+			"failed to open map (%s) when parsing with error %s" % [_file_path, result]
 		)
 		return mapData
 
@@ -793,7 +785,7 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 
 	for ways in mapData.streetMatrix.size():
 		await get_tree().process_frame
-		create_and_update_path(streetPath3D, streetNode, mapData.streetMatrix[ways])
+		create_and_update_path(STREET_PATH_SCENE, streetNode, mapData.streetMatrix[ways])
 
 	for ways in mapData.streetMatrix_trunk.size():
 		await get_tree().process_frame

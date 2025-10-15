@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://d1eifp05heqwp"]
+
+[ext_resource type="PackedScene" uid="uid://r0l7buoggfxi" path="res://assets/models/persim/persim.gltf" id="1_rrkhn"]
+
+[node name="Persim" type="Node3D"]
+
+[node name="persim" parent="." instance=ExtResource("1_rrkhn")]
+
+[node name="Skeleton3D" parent="persim/Armature" index="0"]
+bones/5/position = Vector3(0.7990587, 0.87678975, 0.09948587)
+bones/7/rotation = Quaternion(-0.25437275, 0.45801276, 0.8363955, -0.16112542)
+bones/13/rotation = Quaternion(0.22658975, 0.69733286, -0.649766, -0.2004699)
+
+[editable path="persim"]

@@ -3,6 +3,7 @@ desktop.ini
 
 # Exported Game Builds
 builds/
+build/
 
 # Temp files
 ~*
