@@ -1,13 +1,13 @@
 class_name BoundaryData extends Resource
 
 # this is all in mercantor projected coordinates
-@export_storage var minimum: Vector2
-@export_storage var maximum: Vector2
-@export_storage var center: Vector2
-@export_storage var valid: bool = false
+@export var minimum: Vector2
+@export var maximum: Vector2
+@export var center: Vector2
+@export var valid: bool = false
 
 # this is which tile of the world map it represents
-@export_storage var tile_coordinate: Vector2i
+@export var tile_coordinate: Vector2i
 
 func _init(
 	p_minimum: Vector2 = Vector2.ZERO,
