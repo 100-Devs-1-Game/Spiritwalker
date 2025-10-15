@@ -49,15 +49,15 @@ var tilecoords_being_replaced: Array[Vector2i]
 var player_previous_tilecoords: Vector2i
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
-const WORLD_MIN_GPS := Vector2(-85.05113, -180.0)
-const WORLD_MAX_GPS := Vector2(85.05113, 180.0)
+const WORLD_MIN_GPS := Vector2(-180.0, -85.05113)
+const WORLD_MAX_GPS := Vector2(180.0,   85.05113)
 const WORLD_CENTER_GPS := WORLD_MAX_GPS + WORLD_MIN_GPS # a.k.a "Null Island" lat/lon is 0/0
 const WORLD_SIZE_GPS := WORLD_MAX_GPS - WORLD_MIN_GPS # the total lat/lon of the world
 
 # MERC = (Web) mercantor projection
 # web means 0,0 is top left, like in game engines. +x = right, +y = down
-static var WORLD_MIN_MERC: Vector2 = mercatorProjection(WORLD_MIN_GPS.x, WORLD_MIN_GPS.y)
-static var WORLD_MAX_MERC: Vector2 = mercatorProjection(WORLD_MAX_GPS.x, WORLD_MAX_GPS.y)
+static var WORLD_MIN_MERC: Vector2 = Vector2(-20037508.0, -20037508.0)
+static var WORLD_MAX_MERC: Vector2 = Vector2(20037508.0, 20037508.0)
 static var WORLD_CENTER_MERC: Vector2 = WORLD_MAX_MERC + WORLD_MIN_MERC
 static var WORLD_SIZE_MERC: Vector2 = WORLD_MAX_MERC - WORLD_MIN_MERC
 
@@ -72,11 +72,19 @@ static var WORLD_TILE_DIMENSIONS_MERC := WORLD_SIZE_MERC / WORLD_TILES_PER_SIDE
 
 static func calculate_uv_from_merc(center_merc: Vector2) -> Vector2:
 	# we are UV unwrapping the world :D
+	const epsilon := 1e-9
 	return Vector2(
 		 # (percentage) how far is our center from the left edge of the world
-		(center_merc.x - WORLD_MIN_MERC.x) / WORLD_SIZE_MERC.x,
+		((center_merc.x - WORLD_MIN_MERC.x) + epsilon) / WORLD_SIZE_MERC.x,
 		 # (percentage) how far is our center from the top edge of the world
-		(WORLD_MAX_MERC.y - center_merc.y) / WORLD_SIZE_MERC.y,
+		((WORLD_MAX_MERC.y - center_merc.y) + epsilon) / WORLD_SIZE_MERC.y,
+	)
+
+
+static func calculate_merc_from_uv(uv_position: Vector2) -> Vector2:
+	return Vector2(
+		(uv_position.x * WORLD_SIZE_MERC.x) + WORLD_MIN_MERC.x,
+		 WORLD_MAX_MERC.y - (uv_position.y * WORLD_SIZE_MERC.y),
 	)
 
 
@@ -98,21 +106,14 @@ static func calculate_uv_from_tile_coordinate(tile_coords: Vector2i) -> Vector2:
 	return Vector2(tile_coords) / WORLD_TILES_PER_SIDE
 
 
-static func calculate_merc_from_uv(uv_position: Vector2) -> Vector2:
-	return Vector2(
-		(uv_position.x * WORLD_SIZE_MERC.x) + WORLD_MIN_MERC.x,
-		 WORLD_MAX_MERC.y - (uv_position.y * WORLD_SIZE_MERC.y),
-	)
-
-
 # x = LON (horizontal)
 # y = LAT (vertical)
 # THIS IS NOT WEB - THIS IS GEOGRAPHIC
 # i.e the Y starts at 0 at the bottom and goes up as it increases
 static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 	const WORLD_RADIUS := 6378137.0
-	var x := _lon * (PI/180.0) * WORLD_RADIUS
-	var y := log(tan(_lat * (PI/180.0)/2.0 + PI/4.0)) * WORLD_RADIUS
+	var x := _lon * PI / 180.0 * WORLD_RADIUS
+	var y := log(tan(_lat * (PI / 180.0 / 2.0) + PI/4.0)) * WORLD_RADIUS
 	return Vector2(x, y)
 
 
@@ -122,8 +123,8 @@ static func mercatorProjection(_lat: float, _lon: float) -> Vector2:
 # i.e the Y starts at 0 at the bottom and goes up as it increases
 static func inverseMercatorProjection(merc: Vector2) -> Vector2:
 	const WORLD_RADIUS := 6378137.0
-	var _lon := (merc.x / WORLD_RADIUS) * (180.0 / PI)
-	var _lat := (2.0 * atan(exp(merc.y / WORLD_RADIUS)) - PI/2.0) * (180.0 / PI)
+	var _lon := (merc.x / WORLD_RADIUS) * 180.0 / PI
+	var _lat := (2.0 * atan(exp( merc.y / WORLD_RADIUS)) - (PI / 2.0 )) * 180.0 / PI
 	return Vector2(_lon, _lat)
 
 
@@ -604,7 +605,7 @@ func parseXML(_file_path: String) -> MapData:
 				xz_dict[id_xml] = Vector3(
 					vec.x - mapData.boundaryData.center.x,
 					0,
-					-(vec.y - mapData.boundaryData.center.y)
+					mapData.boundaryData.center.y - vec.y,
 				)
 
 			#if parsing the way nodes...
@@ -704,7 +705,14 @@ func playerBounds(x_merc: float, y_merc: float):
 		player_pos.x = 0.0
 		player_pos.z = 0.0
 
-	var player_current_tilecoords := calculate_tile_coordinate_from_uv(calculate_uv_from_merc(Vector2(x_merc, y_merc)))
+	var player_current_tilecoords: Vector2i
+	if currentMapData && currentMapData.boundaryData.contains_merc(Vector2(x_merc, y_merc)):
+		#print("current map contains player")
+		player_current_tilecoords = currentMapData.boundaryData.tile_coordinate
+	else:
+		#print("we have to calculate our tile coordinate since the current map does not contain the player")
+		player_current_tilecoords = calculate_tile_coordinate_from_uv(calculate_uv_from_merc(Vector2(x_merc, y_merc)))
+
 	if player_current_tilecoords != player_previous_tilecoords:
 		currentMapData = null
 
