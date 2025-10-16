@@ -11,6 +11,7 @@ script = ExtResource("1_troad")
 [node name="collectables" type="Node3D" parent="."]
 
 [node name="creatures" type="Node3D" parent="."]
+visible = false
 
 [node name="buildings" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
@@ -44,6 +45,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
 
 [node name="LatPosition" type="CSGBox3D" parent="."]
 unique_name_in_owner = true
-visible = false
 size = Vector3(10, 10, 10)
 material = SubResource("StandardMaterial3D_6hs8k")

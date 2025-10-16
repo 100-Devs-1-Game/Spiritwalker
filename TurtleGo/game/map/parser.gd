@@ -99,13 +99,19 @@ static func calculate_tile_coordinate_from_uv(uv_position: Vector2) -> Vector2i:
 	# it could be a fractional number, in which case we floor it to "snap" to the nearest tile
 	# so it can kinda work like an index in to an array
 	# this is important for later, when we want to save and load the map
+	#return Vector2i(
+		#floori((uv_position.x - (calculate_uv_from_tile_coordinate(Vector2i(0, 0)).x / 2.0)) * WORLD_TILES_PER_SIDE),
+		#floori((uv_position.y - (calculate_uv_from_tile_coordinate(Vector2i(0, 0)).y / 2.0)) * WORLD_TILES_PER_SIDE),
+	#)
+	const epsilon := 1e-7
 	return Vector2i(
-		floori(uv_position.x * WORLD_TILES_PER_SIDE),
-		floori(uv_position.y * WORLD_TILES_PER_SIDE),
+		floori((uv_position.x+epsilon) * WORLD_TILES_PER_SIDE),
+		floori((uv_position.y+epsilon) * WORLD_TILES_PER_SIDE),
 	)
 
 
 static func calculate_uv_from_tile_coordinate(tile_coords: Vector2i) -> Vector2:
+	#return (Vector2(tile_coords) + Vector2(0.5, 0.5)) / WORLD_TILES_PER_SIDE
 	return Vector2(tile_coords) / WORLD_TILES_PER_SIDE
 
 
@@ -163,8 +169,35 @@ static func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 		Vector2(lon_max - lon_min, lat_max - lat_min) # size
 	)
 
+func check_conversion(coords: Vector2i) -> void:
+	var uv := calculate_uv_from_tile_coordinate(coords)
+	var merc := calculate_merc_from_uv(uv)
+	var gps := inverseMercatorProjection(merc)
+	var merc_inv := mercatorProjection(gps.y, gps.x)
+	var uv_inv := calculate_uv_from_merc(merc_inv)
+	var coords_inv := calculate_tile_coordinate_from_uv(uv_inv)
+	assert(uv.is_equal_approx(uv_inv))
+	assert(merc.is_equal_approx(merc_inv))
+	assert(coords == coords_inv)
+	var uv2 := calculate_uv_from_tile_coordinate(coords_inv)
+	var merc2 := calculate_merc_from_uv(uv2)
+	var gps2 := inverseMercatorProjection(merc2)
+	var merc_inv2 := mercatorProjection(gps2.y, gps2.x)
+	var uv_inv2 := calculate_uv_from_merc(merc_inv2)
+	var coords_inv2 := calculate_tile_coordinate_from_uv(uv_inv2)
+	assert(uv2.is_equal_approx(uv_inv2))
+	assert(merc2.is_equal_approx(merc_inv2))
+	assert(coords_inv == coords_inv2)
+
 
 func _ready():
+	check_conversion(Vector2i(128887, 87467))
+	check_conversion(Vector2i(128887, 87468))
+	check_conversion(Vector2i(128887, 87469))
+	check_conversion(Vector2i(128886, 87468))
+	check_conversion(Vector2i(128887, 87468))
+	check_conversion(Vector2i(128888, 87468))
+
 	Signals.mapUpdated.connect(parseXML)
 	Signals.enableGPS.connect(checkGPS)
 	$HTTPRequest.request_completed.connect(_on_request_completed)
@@ -392,7 +425,8 @@ func load_or_download_tiles(_lat: float, _lon: float):
 
 	tilecoords_to_check.append(our_tile_coords + Vector2i(-1, 0)) #left
 	tilecoords_to_check.append(our_tile_coords + Vector2i(1, 0)) #right
-	# this being last is important for forcing it to the front later
+
+	#this being last is important for forcing it to the front later
 	tilecoords_to_check.append(our_tile_coords)
 
 	for coords in tilecoords_to_check:
@@ -558,7 +592,7 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 		found_tile.mapData = mapData
 		tiles.add_child(found_tile)
 
-		var offset := mercantorToGodotFromOrigin(mapData.boundaryData.center) / 2.0
+		var offset := mercantorToGodotFromOrigin(mapData.boundaryData.center)
 		found_tile.global_position = offset
 
 		tiles_loaded[mapData.boundaryData.tile_coordinate] = found_tile
@@ -572,7 +606,7 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 	# e.g this can trigger other maps to load/download
 	# and this also causes the player position to update
 	var player_vector := mercatorProjection(lat, lon)
-	playerBounds(player_vector.x, player_vector.y)
+	playerBounds.call_deferred(player_vector.x, player_vector.y)
 	return mapData
 
 #read the osm data from openstreetmap.org
@@ -658,7 +692,7 @@ func parseXML(_file_path: String) -> MapData:
 					pass
 				elif key == "waterway":
 					mapData.waterMatrix.append(xzMatrix[matIDX])
-				elif key == "railway":
+				elif key == "railway" && value != "razed":
 					mapData.railMatrix.append(xzMatrix[matIDX])
 			#the <member> nodes gather many wayIDs with the same tag, i.e. "water"
 			#we list these wayIDs in the memberMatrix and append them to the appropiate subset Matrix, i.e. waterMatrix
@@ -683,7 +717,9 @@ func parseXML(_file_path: String) -> MapData:
 							print("tried to add water way with ID %s, but we don't know about it" % _wayID)
 
 			elif listMember && node_name == "tag":
-				if parser.get_named_attribute_value_safe("k") == "railway":
+				var key := parser.get_named_attribute_value_safe("k")
+				var value := parser.get_named_attribute_value_safe("v")
+				if key == "railway" && value != "razed":
 					for IDX in memberMatrix[memberIDX].size():
 						var _wayID = memberMatrix[memberIDX][IDX]
 						if wayID_to_waypoint_dict.has(_wayID):
@@ -849,28 +885,47 @@ func get_deterministic_rng(coords: Vector2i, other: int) -> RandomNumberGenerato
 	return random
 
 
+func foreach_nodepos(map_data: MapData, matrix: Array[PackedVector3Array], f: Callable) -> void:
+	for ways in matrix.size():
+		for i in matrix[ways].size():
+			var node_pos := matrix[ways][i]
+			var merc_offset := Vector2(node_pos.x, node_pos.z)
+			if not map_data.boundaryData.contains_merc(merc_offset + map_data.boundaryData.center):
+				continue
+
+			f.call(node_pos)
+
+
 func place_collectables(parent: Node3D, map_data: MapData) -> void:
 	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 0)
-
-	for ways in map_data.streetMatrix.size():
-		for i in map_data.streetMatrix[ways].size():
+	var f := func(node_pos: Vector3):
 			var randomInt := rng.randi_range(0, 50)
-			if (randomInt <= 3):
-				var newCrystal = items[randomInt].instantiate()
+			if (randomInt <= 50):
+				var newCrystal = items[rng.randi_range(0, items.size() - 1)].instantiate()
 				newCrystal.scale = Vector3(10, 10, 10)
 				parent.add_child(newCrystal)
-				newCrystal.position = map_data.streetMatrix[ways][i]
+				newCrystal.position = node_pos
+
+	foreach_nodepos(map_data, map_data.streetMatrix, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_pedestrian, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_trunk, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_primary, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_secondary, f)
 
 
 func place_creatures(parent: Node3D, map_data: MapData) -> void:
 	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 1)
+	var f := func(node_pos: Vector3):
+		var randomInt := rng.randi_range(0, 50)
+		if randomInt <= 50:
+			var creature_data := CREATURES_DATA[rng.randi_range(0, CREATURES_DATA.size() - 1)]
+			var new_creature = CREATURE_SCENE.instantiate() as Creature
+			new_creature.data = creature_data
+			parent.add_child(new_creature)
+			new_creature.position = -node_pos
 
-	for ways in map_data.streetMatrix.size():
-		for i in map_data.streetMatrix[ways].size():
-			var randomInt := rng.randi_range(0, 50)
-			if randomInt <= 1:
-				var creature_data := CREATURES_DATA[rng.randi_range(0, CREATURES_DATA.size() - 1)]
-				var new_creature = CREATURE_SCENE.instantiate() as Creature
-				new_creature.data = creature_data
-				parent.add_child(new_creature)
-				new_creature.position = map_data.streetMatrix[ways][i]
+	foreach_nodepos(map_data, map_data.streetMatrix, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_pedestrian, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_trunk, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_primary, f)
+	foreach_nodepos(map_data, map_data.streetMatrix_secondary, f)

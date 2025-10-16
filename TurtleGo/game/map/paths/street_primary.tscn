@@ -2,19 +2,19 @@
 
 [ext_resource type="Material" uid="uid://bewnkiw5ovdx1" path="res://assets/map/street/street_material.tres" id="1_p0dfl"]
 
-[sub_resource type="Curve3D" id="Curve3D_wytjb"]
+[sub_resource type="Curve3D" id="Curve3D_yhwdv"]
 resource_local_to_scene = true
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 10),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
 
 [node name="path3D" type="Path3D"]
-curve = SubResource("Curve3D_wytjb")
+curve = SubResource("Curve3D_yhwdv")
 
 [node name="CSGPolygon3D" type="CSGPolygon3D" parent="."]
-polygon = PackedVector2Array(0, 0, 0, 0.1, 8, 0.1, 8, 0)
+polygon = PackedVector2Array(-4, 0, -4, 0.1, 4, 0.1, 4, 0)
 mode = 2
 path_node = NodePath("..")
 path_interval_type = 0
@@ -22,7 +22,7 @@ path_interval = 1.0
 path_simplify_angle = 0.0
 path_rotation = 2
 path_rotation_accurate = false
-path_local = false
+path_local = true
 path_continuous_u = true
 path_u_distance = 0.0
 path_joined = false

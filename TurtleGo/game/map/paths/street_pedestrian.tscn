@@ -2,19 +2,19 @@
 
 [ext_resource type="Material" uid="uid://b4jf6eggmuxwb" path="res://assets/map/street/street_pedestrian_material.tres" id="1_malbp"]
 
-[sub_resource type="Curve3D" id="Curve3D_wytjb"]
+[sub_resource type="Curve3D" id="Curve3D_q8huv"]
 resource_local_to_scene = true
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 10, 0, 0, 0, 0, 0, 0, 20, 0, 20),
-"tilts": PackedFloat32Array(0, 0, 0)
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10),
+"tilts": PackedFloat32Array(0, 0)
 }
-point_count = 3
+point_count = 2
 
 [node name="path3D" type="Path3D"]
-curve = SubResource("Curve3D_wytjb")
+curve = SubResource("Curve3D_q8huv")
 
 [node name="CSGPolygon3D" type="CSGPolygon3D" parent="."]
-polygon = PackedVector2Array(0, 0, 0, 0.1, 6, 0.1, 6, 0)
+polygon = PackedVector2Array(-3, -0.1, -3, 0.1, 3, 0.1, 3, -0.1)
 mode = 2
 path_node = NodePath("..")
 path_interval_type = 0
@@ -22,7 +22,7 @@ path_interval = 1.0
 path_simplify_angle = 0.0
 path_rotation = 2
 path_rotation_accurate = false
-path_local = false
+path_local = true
 path_continuous_u = true
 path_u_distance = 0.0
 path_joined = false

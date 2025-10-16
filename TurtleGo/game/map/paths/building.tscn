@@ -1,9 +1,9 @@
 [gd_scene load_steps=3 format=3 uid="uid://dpwcjn3sytid7"]
 
-[sub_resource type="Curve3D" id="Curve3D_wytjb"]
+[sub_resource type="Curve3D" id="Curve3D_0rgk1"]
 resource_local_to_scene = true
 _data = {
-"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 10),
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10),
 "tilts": PackedFloat32Array(0, 0)
 }
 point_count = 2
@@ -12,10 +12,10 @@ point_count = 2
 albedo_color = Color(0.412152, 0.412152, 0.412152, 1)
 
 [node name="path3D" type="Path3D"]
-curve = SubResource("Curve3D_wytjb")
+curve = SubResource("Curve3D_0rgk1")
 
 [node name="CSGPolygon3D" type="CSGPolygon3D" parent="."]
-polygon = PackedVector2Array(0, 0, 0, 0.1, 4, 0.1, 4, 0)
+polygon = PackedVector2Array(-2, 0, -2, 0.1, 2, 0.1, 2, 0)
 mode = 2
 path_node = NodePath("..")
 path_interval_type = 0
@@ -23,10 +23,10 @@ path_interval = 1.0
 path_simplify_angle = 0.0
 path_rotation = 2
 path_rotation_accurate = false
-path_local = false
+path_local = true
 path_continuous_u = true
 path_u_distance = 0.0
-path_joined = false
+path_joined = true
 material = SubResource("StandardMaterial3D_gfemm")
 
 [connection signal="property_list_changed" from="." to="." method="_on_property_list_changed"]
