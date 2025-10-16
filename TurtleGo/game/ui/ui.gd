@@ -1,9 +1,9 @@
 extends Node
 
-var savedInventory:SavedInventory
+var savedInventory: SavedInventory
 
 func _ready():
-	Signals.connect("updateCollectables", updateInventory)
+	Signals.updateCollectables.connect(updateInventory)
 
 func updateInventory(_collectable, _collCount):
 	var node_path = str("CanvasLayer/PanelContainer/CollectableContainer/", _collectable)
@@ -12,4 +12,4 @@ func updateInventory(_collectable, _collCount):
 
 func _on_enable_gps_pressed():
 	print("button pressed")
-	Signals.emit_signal("enableGPS")
+	Signals.enableGPS.emit()

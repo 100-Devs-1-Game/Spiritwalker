@@ -33,15 +33,16 @@ func updatePosition(pos: Vector3, teleport: bool):
 	$OldPosition.global_position = oldPosition
 
 func _process(delta: float):
-	# simulate infrequent GPS updates
-	if time_since_last_update >= 0.5:
-		time_since_last_update = 0.0
-		parser.locationUpdate({
-			"latitude": parser.lat,
-			"longitude": parser.lon,
-		})
-	else:
-		time_since_last_update += delta
+	if OS.get_name() == "Windows" || OS.get_name() == "Linux":
+		# simulate infrequent GPS updates
+		if time_since_last_update >= 0.5:
+			time_since_last_update = 0.0
+			parser.locationUpdate({
+				"latitude": parser.lat,
+				"longitude": parser.lon,
+			})
+		else:
+			time_since_last_update += delta
 
 	time_since_last_update_pos += delta
 
@@ -53,16 +54,17 @@ func _process(delta: float):
 	if (oldPosition && newPosition) || (global_position != newPosition):
 		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 1.0)
 
-	var gps_offset: Vector2
+	if OS.get_name() == "Windows" || OS.get_name() == "Linux":
+		var gps_offset: Vector2
 
-	var input_dir := Vector2(
-		Input.get_axis(&"left", &"right"),
-		Input.get_axis(&"down", &"up"),
-	)
-	gps_offset = input_dir.normalized() * speed * delta * 0.005
+		var input_dir := Vector2(
+			Input.get_axis(&"left", &"right"),
+			Input.get_axis(&"down", &"up"),
+		)
+		gps_offset = input_dir.normalized() * speed * delta * 0.005
 
-	parser.lon += gps_offset.x
-	parser.lat += gps_offset.y
+		parser.lon += gps_offset.x
+		parser.lat += gps_offset.y
 
 	$LatPosition.global_position = parser.mercantorToGodotFromOrigin(
 		Parser.mercatorProjection(parser.lat, parser.lon)

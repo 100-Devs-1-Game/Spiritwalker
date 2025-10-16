@@ -32,12 +32,12 @@ func _init(
 
 	var uv := Parser.calculate_uv_from_merc(center)
 	tile_coordinate = Parser.calculate_tile_coordinate_from_uv(uv)
-
-	return
+	Parser.check_conversion(tile_coordinate)
 
 	# recalculate center from the tilecoords, don't trust OSM to be accurate to our request
 	center = Parser.calculate_merc_from_uv(Parser.calculate_uv_from_tile_coordinate(tile_coordinate))
-	center += (Parser.WORLD_TILE_DIMENSIONS_MERC / 2.0)
+	center.x += (Parser.WORLD_TILE_DIMENSIONS_MERC.x / 2.0)
+	center.y -= (Parser.WORLD_TILE_DIMENSIONS_MERC.y / 2.0)
 
 	# recalculate min and max for the same reason, we want perfect boundaries
 	minimum = Vector2(
@@ -48,6 +48,11 @@ func _init(
 		center.x + (Parser.WORLD_TILE_DIMENSIONS_MERC.x / 2.0),
 		center.y + (Parser.WORLD_TILE_DIMENSIONS_MERC.y / 2.0),
 	)
+
+	var coords_new := Parser.calculate_tile_coordinate_from_uv(Parser.calculate_uv_from_tile_coordinate(tile_coordinate))
+	assert(tile_coordinate == coords_new)
+	Parser.check_conversion(coords_new)
+	tile_coordinate = coords_new
 
 func get_half_length() -> float:
 	return (maximum.x - center.x)
