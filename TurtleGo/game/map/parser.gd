@@ -94,7 +94,8 @@ const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 4
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
 # NOTE: if you turn this off, you may just want to turn off the matrix too
-const WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS := true
+# WARNING: if this is enabled, paths seem to break on android ???? why
+const WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS := false
 
 # this will allow each matrix to load over multiple frames
 # e.g each road will take one frame to load, so all roads take multiple frames
@@ -313,25 +314,26 @@ func _ready():
 	$HTTPRequest.request_completed.connect(_on_request_completed)
 	var userOS = OS.get_name()
 
+	var err := DirAccess.make_dir_recursive_absolute("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
+	if err != Error.OK:
+		push_error("failed to create maps directory: ", err)
+
 	if userOS == "Windows" || userOS == "Linux":
 		print("ON DESKTOP - SETTING DEBUG LOCATION")
 
 		lat = 51.234286
 		lon = -2.999235
-		var err := DirAccess.make_dir_recursive_absolute("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
-		if err != Error.OK:
-			push_error("failed to create maps directory: ", err)
-		load_or_download_tiles(lat, lon)
+		await load_or_download_tiles(lat, lon)
 	else:
-		var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
-		if err != Error.OK:
-			push_error("failed to remove maps directory: ", err)
-		err = DirAccess.make_dir_recursive_absolute("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
-		if err != Error.OK:
-			push_error("failed to create maps directory: ", err)
-		err = remove_recursive("user://saves/")
-		if err != Error.OK:
-			push_error("failed to create saves directory: ", err)
+		#var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
+		#if err != Error.OK:
+			#push_error("failed to remove maps directory: ", err)
+		#err = DirAccess.make_dir_recursive_absolute("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
+		#if err != Error.OK:
+			#push_error("failed to create maps directory: ", err)
+		#err = remove_recursive("user://saves/")
+		#if err != Error.OK:
+			#push_error("failed to create saves directory: ", err)
 		checkGPS()
 
 	# infinitely try and download our (and neighbouring) tiles
@@ -353,7 +355,7 @@ func _ready():
 func regularly_load_tiles():
 	while true:
 		await get_tree().create_timer(LOAD_OR_DOWNLOAD_NEIGHBOURING_TILES_EVERY_X_SECONDS).timeout
-		load_or_download_tiles(lat, lon)
+		await load_or_download_tiles(lat, lon)
 
 func regularly_unload_tiles():
 	while true:
@@ -403,7 +405,7 @@ func regularly_load_queued_tiles() -> void:
 
 		assert(has_map_tilecoords(coords))
 		var file := get_tile_filename_for_coords(coords)
-		var success := parseAndReplaceMap(file)
+		var success := await parseAndReplaceMap(file)
 		if success:
 			tilecoords_queued_for_download.erase(coords)
 			print("LD Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_loading.size()])
@@ -473,7 +475,6 @@ func checkGPS():
 		assert(false)
 
 	enableGPS()
-
 
 func enableGPS():
 	if Engine.has_singleton("PraxisMapperGPSPlugin"):
@@ -593,7 +594,7 @@ func load_or_download_tiles(_lat: float, _lon: float):
 				tilecoords_queued_for_loading.erase(coords)
 				# try and instantly load this tile since it's our priority
 				var file := get_tile_filename_for_coords(coords)
-				var success := parseAndReplaceMap(file)
+				var success := await parseAndReplaceMap(file)
 				if success:
 					# remove it from the queue in case it was added by someone else before
 					tilecoords_queued_for_download.erase(coords)
@@ -668,7 +669,7 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 	# pause for a second before we let anyone download another map
 	await get_tree().create_timer(DELAY_NEXT_DOWNLOAD_BY_X_SECONDS).timeout
 
-	var mapData := parseAndReplaceMap(file_path.trim_suffix(".xml"))
+	var mapData := await parseAndReplaceMap(file_path.trim_suffix(".xml"))
 	if !mapData:
 		inflight_download_requests -= 1
 		if inflight_download_requests == 0:
@@ -743,7 +744,7 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 
 		tiles_loaded[mapData.boundaryData.tile_coordinate] = found_tile
 
-		replaceMapScene(found_tile, mapData)
+		await replaceMapScene(found_tile, mapData)
 		$VBoxContainer/Label4.text = str(Time.get_datetime_string_from_system())
 		place_collectables(found_tile.collectables, mapData)
 		place_creatures(found_tile.creatures, mapData)
@@ -933,7 +934,7 @@ func playerBounds(x_merc: float, y_merc: float):
 
 	$VBoxContainer/Label5.text = "out of bounds!"
 
-	load_or_download_tiles(lat, lon)
+	await load_or_download_tiles(lat, lon)
 
 var counter := 0
 func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
@@ -1005,7 +1006,7 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
-	create_and_update_path(BOUNDARY_SCENE, boundaryNode, boundary)
+	await create_and_update_path(BOUNDARY_SCENE, boundaryNode, boundary)
 
 	for ways in mapData.streetMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
