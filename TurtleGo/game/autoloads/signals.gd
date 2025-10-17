@@ -8,4 +8,6 @@ signal updateCollectables
 
 
 signal player_entered_creature_range(creature: Creature)
-signal start_combat(create_data: CreatureData)
+signal creature_combat_start(creature_data: CreatureData)
+signal creature_combat_delayed(creature_data: CreatureData)
+signal creature_captured(creature_data: CreatureData)

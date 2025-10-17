@@ -70,7 +70,8 @@ func _physics_process(delta: float) -> void:
 			print(self, " chasing")
 		global_position = global_position.move_toward(player.global_position, SPEED * delta)
 		if lengthsqrd <= 10*10:
-			Signals.start_combat.emit(data)
+			Signals.creature_combat_delayed.emit(data)
+			#Signals.creature_combat_start.emit(data)
 			if Debug.CREATURE:
 				print(self, " COMBAT")
 			player.creature_chasing = null
@@ -79,6 +80,7 @@ func _physics_process(delta: float) -> void:
 			if Debug.CREATURE:
 				print(self, " %s TOO FAR AWAY" % lengthsqrd)
 			player.creature_chasing = null
+			Signals.creature_combat_delayed.emit(data)
 			queue_free()
 		else:
 			if Debug.CREATURE:

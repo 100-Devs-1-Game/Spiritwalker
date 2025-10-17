@@ -42,6 +42,21 @@ func loadInventory():
 
 	Signals.addCollectable.connect(addInventory)
 
+	Signals.creature_combat_delayed.connect(func(data: CreatureData) -> void:
+		var ccd := savedInventory.codex.get_or_add(data.name, CodexCreatureData.new()) as CodexCreatureData
+		ccd.name_id = data.name
+		ccd.num_waiting_to_fight += 1
+		saveInventory()
+	)
+
+	Signals.creature_captured.connect(func(data: CreatureData) -> void:
+		var ccd := savedInventory.codex.get_or_add(data.name, CodexCreatureData.new()) as CodexCreatureData
+		ccd.name_id = data.name
+		ccd.num_waiting_to_fight -= 1
+		ccd.num_captured += 1
+		saveInventory()
+	)
+
 	print_debug("loaded savegame: ", savedInventory.collectables)
 	updateUI()
 
