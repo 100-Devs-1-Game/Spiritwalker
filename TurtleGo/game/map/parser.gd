@@ -468,14 +468,21 @@ func unload_tile(coords: Vector2i) -> void:
 	tilecoords_being_replaced.erase(coords)
 
 func checkGPS():
-	var allowed = OS.request_permissions()
-	if allowed:
-		print("gps permitted")
-	else:
-		print("gps not permitted")
-		assert(false)
+	var has_permission := false
+	while not has_permission:
+		has_permission = OS.request_permissions()
+		if has_permission:
+			print("gps permitted")
+		else:
+			%LabelTileCoord.text = "ENABLE LOCATION PERMISSIONS"
+			print("gps not permitted")
+		await get_tree().create_timer(0.5).timeout
 
 	enableGPS()
+
+	while is_nan(lat) || is_nan(lon) || (is_zero_approx(lat) && is_zero_approx(lon)):
+		%LabelTileCoord.text = "WAITING FOR GPS DATA"
+		await get_tree().create_timer(0.5).timeout
 
 func enableGPS():
 	if Engine.has_singleton("PraxisMapperGPSPlugin"):
