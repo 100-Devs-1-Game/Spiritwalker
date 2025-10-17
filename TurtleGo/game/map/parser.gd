@@ -320,7 +320,8 @@ func _ready():
 		push_error("failed to create maps directory: ", err)
 
 	if userOS == "Windows" || userOS == "Linux":
-		print("ON DESKTOP - SETTING DEBUG LOCATION")
+		if Debug.PARSER:
+			print("ON DESKTOP - SETTING DEBUG LOCATION")
 
 		lat = 51.234286
 		lon = -2.999235
@@ -386,7 +387,8 @@ func regularly_download_queued_tiles() -> void:
 			continue
 
 		var coords := tilecoords_queued_for_download[0]
-		print("DL Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_download.size() - 1])
+		if Debug.PARSER:
+			print("DL Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_download.size() - 1])
 		download_map_tilecoords(coords)
 		tilecoords_queued_for_loading.erase(coords)
 		tilecoords_queued_for_download.erase(coords)
@@ -409,7 +411,8 @@ func regularly_load_queued_tiles() -> void:
 		var success := await parseAndReplaceMap(file)
 		if success:
 			tilecoords_queued_for_download.erase(coords)
-			print("LD Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_loading.size()])
+			if Debug.PARSER:
+				print("LD Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_loading.size()])
 			continue
 
 		# since it failed to load, queue it for download
@@ -451,7 +454,8 @@ func unload_tile(coords: Vector2i) -> void:
 		assert(false)
 
 	tilecoords_being_replaced.append(coords)
-	#print("UNLDD. TILE: %sx-%sy" % [coords.x, coords.y])
+	if Debug.PARSER >= Debug.Level.All:
+		print("UNLDD. TILE: %sx-%sy" % [coords.x, coords.y])
 	if WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS:
 		for child in found_tile.get_children():
 			if is_instance_valid(child):
@@ -573,7 +577,7 @@ func get_adjacent_coords(coords: Vector2i) -> Array[Vector2i]:
 
 func load_or_download_tiles(_lat: float, _lon: float):
 	if is_zero_approx(_lat) && is_zero_approx(_lon):
-		print("tried to load or download tiles with invalid GPS location")
+		print("tried to load or download tiles with invalid GPS location - do we have a valid location yet?")
 		return
 
 	var actual_merc := mercatorProjection(_lat, _lon)
@@ -657,7 +661,8 @@ func downloadMap(_lat: float, _lon: float):
 	var _lon_max:String = decimal_places % (tile_center.x + (tile_bbox.size.x / 2.0))
 	active_download_tilecoords = our_tile_coords
 	url = url_base + _lon_min + "," + _lat_min + "," + _lon_max + "," + _lat_max
-	print("DOWNLOADING: %sx-%sy          (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, url])
+	if Debug.PARSER:
+		print("DOWNLOADING: %sx-%sy          (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, url])
 	file_path = get_tile_filename_for_coords(our_tile_coords) + ".xml"
 	$HTTPRequest.set_download_file(file_path)
 	$HTTPRequest.request(url)
@@ -665,7 +670,8 @@ func downloadMap(_lat: float, _lon: float):
 
 func _on_request_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
 	#Signals.emit_signal("mapUpdated", file_path)
-	print("DOWNLOADED : %sx-%sy CODE %d (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, response_code, url])
+	if Debug.PARSER:
+		print("DOWNLOADED : %sx-%sy CODE %d (%s)" % [active_download_tilecoords.x, active_download_tilecoords.y, response_code, url])
 	counter_downloads_completed += 1
 	$VBoxContainer/Label2.text = str(counter_downloads_completed, url)
 
@@ -688,15 +694,17 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		return
 
 	if tilecoords_queued_for_download.has(mapData.boundaryData.tile_coordinate) || tilecoords_queued_for_loading.has(mapData.boundaryData.tile_coordinate):
-		print("LOADED TILE: %sx-%sy (%d & %d remaining)" % [
-			mapData.boundaryData.tile_coordinate.x,
-			mapData.boundaryData.tile_coordinate.y,
-			tilecoords_queued_for_loading.size(),
-			tilecoords_queued_for_download.size(),
-		])
+		if Debug.PARSER:
+			print("LOADED TILE: %sx-%sy (%d & %d remaining)" % [
+				mapData.boundaryData.tile_coordinate.x,
+				mapData.boundaryData.tile_coordinate.y,
+				tilecoords_queued_for_loading.size(),
+				tilecoords_queued_for_download.size(),
+			])
 
 	if active_download_tilecoords != mapData.boundaryData.tile_coordinate:
 		push_warning("we downloaded the tile %s but we thought we were downloading the tile %s? how?" % [mapData.boundaryData.tile_coordinate, active_download_tilecoords])
+		assert(false)
 
 	tilecoords_queued_for_loading.erase(mapData.boundaryData.tile_coordinate)
 	tilecoords_queued_for_download.erase(mapData.boundaryData.tile_coordinate)
@@ -716,7 +724,8 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 
 	if not mapData or not mapData.boundaryData.valid:
 		if not FileAccess.file_exists(_file_path + ".xml"):
-			print("failed to find .tres or xml: ", _file_path)
+			if Debug.PARSER:
+				print("failed to find .tres or xml: ", _file_path)
 			return null
 
 		#print("failed to find .tres, parsing xml: ", _file_path)
@@ -828,7 +837,8 @@ func parseXML(_file_path: String) -> MapData:
 				if xz_dict.has(id):
 					xzMatrix[matIDX].append(xz_dict[id])
 				else:
-					print("found nd with id '%s' but it's not in our dict" % id)
+					if Debug.PARSER_XML:
+						print("found nd with id '%s' but it's not in our dict" % id)
 				#then add subsets of xzMatrix to the buildMatrix, streetMatrix, etc.
 			elif listWaypoints && node_name == "tag":
 				var key := parser.get_named_attribute_value_safe("k")
@@ -878,7 +888,8 @@ func parseXML(_file_path: String) -> MapData:
 							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
 							mapData.waterMatrix.append(_nodeIDs)
 						else:
-							print("tried to add water way with ID %s, but we don't know about it" % _wayID)
+							if Debug.PARSER_XML:
+								print("tried to add water way with ID %s, but we don't know about it" % _wayID)
 
 			elif listMember && node_name == "tag":
 				var key := parser.get_named_attribute_value_safe("k")
@@ -890,7 +901,8 @@ func parseXML(_file_path: String) -> MapData:
 							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
 							mapData.railMatrix.append(_nodeIDs)
 						else:
-							print("tried to add railway way with ID %s, but we don't know about it" % _wayID)
+							if Debug.PARSER_XML:
+								print("tried to add railway way with ID %s, but we don't know about it" % _wayID)
 
 			elif node_name == "bounds":
 				var minlat = float(parser.get_named_attribute_value_safe("minlat"))

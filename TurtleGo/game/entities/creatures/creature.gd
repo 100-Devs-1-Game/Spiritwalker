@@ -47,33 +47,41 @@ func _physics_process(delta: float) -> void:
 	var lengthsqrd := distance.length_squared()
 
 	if state == State.TRIGGERED:
-		print(self, " triggered")
+		if Debug.CREATURE:
+			print(self, " triggered")
 		if not player_is_overlapping:
-			print(self, " turning to idle")
+			if Debug.CREATURE:
+				print(self, " turning to idle")
 			state = State.IDLE
 		else:
-			print(self, " facing player")
+			if Debug.CREATURE:
+				print(self, " facing player")
 			visuals.look_at(player.global_position, Vector3.UP, true)
 
 			if !player.creature_chasing:
-				print(self, " turning to chasing")
+				if Debug.CREATURE:
+					print(self, " turning to chasing")
 				player.creature_chasing = self
 				state = State.CHASING
 
 	elif state == State.CHASING:
 		assert(player.creature_chasing == self)
-		print(self, " chasing")
+		if Debug.CREATURE:
+			print(self, " chasing")
 		global_position = global_position.move_toward(player.global_position, SPEED * delta)
 		if lengthsqrd <= 10*10:
 			Signals.start_combat.emit(data)
-			print(self, " COMBAT")
+			if Debug.CREATURE:
+				print(self, " COMBAT")
 			player.creature_chasing = null
 			queue_free()
 		elif lengthsqrd >= 1000*1000:
-			print(self, "%s TOO FAR AWAY" % lengthsqrd)
+			if Debug.CREATURE:
+				print(self, " %s TOO FAR AWAY" % lengthsqrd)
 			player.creature_chasing = null
 			queue_free()
 		else:
-			print(self, "LOOK AT ME")
+			if Debug.CREATURE:
+				print(self, " LOOK AT ME")
 			# TODO: why do I need to flip Z here? it should be correct already :/
 			visuals.look_at(player.global_position, Vector3.UP, true)

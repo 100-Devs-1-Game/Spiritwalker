@@ -6,5 +6,6 @@ enum Level {
 	All = 2
 }
 
-const CREATURE := Level.None
-const PARSER := Level.None
+const CREATURE := Level.Some
+const PARSER := Level.Some
+const PARSER_XML := Level.Some
