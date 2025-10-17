@@ -1,9 +1,11 @@
 class_name Creature extends Node3D
 
+const SPEED := 100.0
+
 enum State {
 	IDLE,
+	TRIGGERED,
 	CHASING,
-	FIGHTING
 }
 
 @export var data: CreatureData
@@ -28,25 +30,50 @@ func _on_body_entered(body: Node3D) -> void:
 	if not player:
 		return
 
-	if player.has_triggered_creature:
-		return
-
 	if state != State.IDLE:
 		return
 
 	Signals.player_entered_creature_range.emit(self)
-	state = State.CHASING
+	state = State.TRIGGERED
 
+func player_is_overlapping() -> bool:
+	return player in player_trigger.get_overlapping_bodies()
 
 func _physics_process(delta: float) -> void:
-	if state == State.CHASING:
-		global_position.move_toward(player.global_position, delta)
-		var distance := global_position - player.global_position
-		var lengthsqrd := distance.length_squared()
+	if !player:
+		return
+
+	var distance := player.global_position - global_position
+	var lengthsqrd := distance.length_squared()
+
+	if state == State.TRIGGERED:
+		print(self, " triggered")
+		if not player_is_overlapping:
+			print(self, " turning to idle")
+			state = State.IDLE
+		else:
+			print(self, " facing player")
+			visuals.look_at(player.global_position, Vector3.UP, true)
+
+			if !player.creature_chasing:
+				print(self, " turning to chasing")
+				player.creature_chasing = self
+				state = State.CHASING
+
+	elif state == State.CHASING:
+		assert(player.creature_chasing == self)
+		print(self, " chasing")
+		global_position = global_position.move_toward(player.global_position, SPEED * delta)
 		if lengthsqrd <= 10*10:
 			Signals.start_combat.emit(data)
+			print(self, " COMBAT")
+			player.creature_chasing = null
 			queue_free()
-		elif lengthsqrd >= 100*100:
+		elif lengthsqrd >= 1000*1000:
+			print(self, "%s TOO FAR AWAY" % lengthsqrd)
+			player.creature_chasing = null
 			queue_free()
 		else:
-			visuals.look_at(player.global_position)
+			print(self, "LOOK AT ME")
+			# TODO: why do I need to flip Z here? it should be correct already :/
+			visuals.look_at(player.global_position, Vector3.UP, true)

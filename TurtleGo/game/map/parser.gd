@@ -18,6 +18,7 @@ var file_path: String
 var inflight_download_requests := 0
 var lat: float
 var lon: float
+var loading_from_playerbounds := false
 
 const STREET_PATH_SCENE := preload("res://game/map/paths/street_other.tscn")
 const STREET_PRIMARY_SCENE := preload("res://game/map/paths/street_primary.tscn")
@@ -86,7 +87,7 @@ const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 4.0
 # decrease this if there is too much lag from creating all the paths
 # but players moving at high speeds might experience delays
 # even if the tile is already downloaded
-const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 4
+const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
 
 # this will allow each path to load over multiple frames
 # e.g a road segment might take multiple frames to load
@@ -106,7 +107,7 @@ const WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX := true
 
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to unload instantly
-const WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS := true
+const WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS := false
 
 # pokemon go uses a zoom level of 17
 # we wereusing a zoom level of 18 at one point
@@ -116,7 +117,7 @@ const WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS := true
 # as there is more data to parse and process in to visual paths
 # creating bigger delays
 # NOTE: this changes the directory name for maps, so it's safe to experiment with it
-const WORLD_TILE_ZOOM_LEVEL := 17
+const WORLD_TILE_ZOOM_LEVEL := 18
 
 # this is how far away a tile must be from the players tile
 # before it is considered "distant"
@@ -129,7 +130,7 @@ const WORLD_TILE_ZOOM_LEVEL := 17
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 2
+const TILE_UNLOAD_RANGE := 3
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -139,7 +140,7 @@ const TILE_UNLOAD_RANGE := 2
 # 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 1
+const ADJACENT_TILE_RANGE := 2
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
 const WORLD_MIN_GPS := Vector2(-180.0, -85.05113)
@@ -558,6 +559,8 @@ func get_adjacent_coords(coords: Vector2i) -> Array[Vector2i]:
 	)
 
 	adjacent_coords = adjacent_coords.filter(tile_is_not_distant)
+	# sort it so the closest vectors are at the end, allowing them to be prioritised
+	adjacent_coords.sort_custom(func(a, b) -> bool: return absf(a.x - coords.x) + absf(a.y - coords.y) > absf(b.x - coords.x) + absf(b.y - coords.y))
 
 	return adjacent_coords
 
@@ -754,8 +757,9 @@ func parseAndReplaceMap(_file_path: String) -> MapData:
 	# and this also causes the player position to update
 	# we defer it until the next frame to prevent infinite loops
 	# (infinite loops shouldn't happen anyway, but sometimes we've seen them)
-	var player_vector := mercatorProjection(lat, lon)
-	playerBounds.call_deferred(player_vector.x, player_vector.y)
+	if !loading_from_playerbounds:
+		var player_vector := mercatorProjection(lat, lon)
+		playerBounds.call_deferred(player_vector.x, player_vector.y)
 	return mapData
 
 #read the osm data from openstreetmap.org
@@ -934,12 +938,18 @@ func playerBounds(x_merc: float, y_merc: float):
 
 	$VBoxContainer/Label5.text = "out of bounds!"
 
-	await load_or_download_tiles(lat, lon)
+	if !loading_from_playerbounds:
+		loading_from_playerbounds = true
+		await load_or_download_tiles(lat, lon)
+		loading_from_playerbounds = false
 
-var counter := 0
+
 func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
 	var scn := packed_scene.instantiate() as Path3D
 	assert(scn)
+
+	scn.visible = false
+	parent.add_child(scn)
 
 	scn.curve.set_point_count(data.size())
 	for i in data.size():
@@ -947,7 +957,7 @@ func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: Pac
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS:
 			await get_tree().process_frame
 
-	parent.add_child(scn)
+	scn.visible = true
 
 
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
@@ -1106,12 +1116,12 @@ func place_creatures(parent: Node3D, map_data: MapData) -> void:
 	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 1)
 	var f := func(node_pos: Vector3):
 		var randomInt := rng.randi_range(0, 50)
-		if randomInt <= 50:
+		if randomInt <= 1:
 			var creature_data := CREATURES_DATA[rng.randi_range(0, CREATURES_DATA.size() - 1)]
 			var new_creature = CREATURE_SCENE.instantiate() as Creature
 			new_creature.data = creature_data
 			parent.add_child(new_creature)
-			new_creature.position = -node_pos
+			new_creature.position = node_pos
 
 	foreach_nodepos(map_data, map_data.streetMatrix, f)
 	foreach_nodepos(map_data, map_data.streetMatrix_pedestrian, f)

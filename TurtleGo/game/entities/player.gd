@@ -12,7 +12,7 @@ var newPosition: Vector3
 var time_since_last_update := 0.0
 var time_since_last_update_pos := 0.0
 
-var has_triggered_creature := false
+var creature_chasing: Node3D = null
 
 func _ready():
 	Signals.playerPos.connect(updatePosition)
@@ -33,16 +33,15 @@ func updatePosition(pos: Vector3, teleport: bool):
 	$OldPosition.global_position = oldPosition
 
 func _process(delta: float):
-	if OS.get_name() == "Windows" || OS.get_name() == "Linux":
-		# simulate infrequent GPS updates
-		if time_since_last_update >= 0.5:
-			time_since_last_update = 0.0
-			parser.locationUpdate({
-				"latitude": parser.lat,
-				"longitude": parser.lon,
-			})
-		else:
-			time_since_last_update += delta
+	# simulate infrequent GPS updates
+	if time_since_last_update >= 0.5:
+		time_since_last_update = 0.0
+		parser.locationUpdate({
+			"latitude": parser.lat,
+			"longitude": parser.lon,
+		})
+	else:
+		time_since_last_update += delta
 
 	time_since_last_update_pos += delta
 

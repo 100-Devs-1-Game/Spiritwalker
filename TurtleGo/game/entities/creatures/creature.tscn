@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dhanusytidgd0" path="res://game/entities/creatures/creature.gd" id="1_86hky"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_86hky"]
-radius = 20.0
+radius = 100.0
 
 [node name="Creature" type="Node3D"]
 script = ExtResource("1_86hky")
