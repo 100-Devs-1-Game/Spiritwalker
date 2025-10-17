@@ -1119,10 +1119,11 @@ func place_collectables(parent: Node3D, map_data: MapData) -> void:
 	var f := func(node_pos: Vector3):
 			var randomInt := rng.randi_range(0, 50)
 			if (randomInt <= 50):
-				var newCrystal = items[rng.randi_range(0, items.size() - 1)].instantiate()
-				newCrystal.scale = Vector3(10, 10, 10)
-				parent.add_child(newCrystal)
-				newCrystal.position = node_pos
+				var new_crystal = items[rng.randi_range(0, items.size() - 1)].instantiate()
+				new_crystal.scale = Vector3(10, 10, 10)
+				new_crystal.name = "%d - %s" % [parent.get_child_count(), new_crystal.name]
+				parent.add_child(new_crystal)
+				new_crystal.position = node_pos
 
 	foreach_nodepos(map_data, map_data.streetMatrix, f)
 	foreach_nodepos(map_data, map_data.streetMatrix_pedestrian, f)
@@ -1139,6 +1140,7 @@ func place_creatures(parent: Node3D, map_data: MapData) -> void:
 			var creature_data := CREATURES_DATA[rng.randi_range(0, CREATURES_DATA.size() - 1)]
 			var new_creature = CREATURE_SCENE.instantiate() as Creature
 			new_creature.data = creature_data
+			new_creature.name = "%d - %s" % [parent.get_child_count(), creature_data.name]
 			parent.add_child(new_creature)
 			new_creature.position = node_pos
 
