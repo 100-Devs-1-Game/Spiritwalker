@@ -3,5 +3,6 @@
 [ext_resource type="Texture2D" uid="uid://dn6kiir1ihg5h" path="res://assets/map/street/street.tres" id="1_7hhu1"]
 
 [resource]
+shading_mode = 0
 albedo_texture = ExtResource("1_7hhu1")
 uv1_scale = Vector3(10.3, 10.3, 1)

@@ -1,10 +1,16 @@
-[gd_scene load_steps=9 format=3 uid="uid://ccfor5yj8jlo8"]
+[gd_scene load_steps=14 format=3 uid="uid://ccfor5yj8jlo8"]
 
 [ext_resource type="PackedScene" uid="uid://bwrteriduaif5" path="res://game/ui/ui.tscn" id="1_rmfcp"]
 [ext_resource type="PackedScene" uid="uid://xpf0qlm4agdp" path="res://game/map/parser.tscn" id="2_y2akx"]
 [ext_resource type="PackedScene" uid="uid://du6c2warfhxof" path="res://game/save/save_load.tscn" id="3_j1cge"]
 [ext_resource type="PackedScene" uid="uid://j8nd1qc28s7d" path="res://game/entities/player.tscn" id="4_ucqwh"]
 [ext_resource type="PackedScene" uid="uid://coyjefbogouuy" path="res://game/camera.tscn" id="5_n30op"]
+
+[sub_resource type="Gradient" id="Gradient_rmfcp"]
+colors = PackedColorArray(0, 0, 0.09803922, 1, 1, 0.85490197, 0.87058824, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_y2akx"]
+gradient = SubResource("Gradient_rmfcp")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ogpwb"]
 
@@ -13,9 +19,28 @@ sky_material = SubResource("ShaderMaterial_ogpwb")
 
 [sub_resource type="Environment" id="Environment_t1d16"]
 background_mode = 1
-background_color = Color(0.405579, 0.483814, 0.352536, 1)
+background_color = Color(0.44818133, 0.7618069, 0.93163514, 1)
 sky = SubResource("Sky_d7y1g")
 sky_custom_fov = 15.4
+ambient_light_source = 2
+ambient_light_color = Color(0.4713503, 0.65894043, 0.6082004, 1)
+ambient_light_energy = 4.0
+reflected_light_source = 1
+adjustment_enabled = true
+adjustment_brightness = 1.4
+adjustment_contrast = 0.7
+adjustment_saturation = 1.5
+adjustment_color_correction = SubResource("GradientTexture1D_y2akx")
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_rmfcp"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rmfcp"]
+shading_mode = 0
+albedo_color = Color(0.53467405, 0.7544607, 0.524208, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rmfcp"]
+material = SubResource("StandardMaterial3D_rmfcp")
+size = Vector2(20000, 20000)
 
 [node name="Map" type="Node3D"]
 
@@ -33,6 +58,7 @@ light_angular_distance = 43.95
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_t1d16")
+camera_attributes = SubResource("CameraAttributesPractical_rmfcp")
 
 [node name="SaveLoad" parent="." instance=ExtResource("3_j1cge")]
 
@@ -40,11 +66,15 @@ environment = SubResource("Environment_t1d16")
 parser = NodePath("../Parser")
 
 [node name="Camera" parent="Player" instance=ExtResource("5_n30op")]
-transform = Transform3D(1, 0, 0, 0, 0.79572725, 0.60565513, 0, -0.60565513, 0.79572725, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 0, 0)
 top_level = true
 
 [node name="Camera3D" parent="Player/Camera" index="0"]
-transform = Transform3D(1, 0, 0, 0, 0.7431447, 0.66913074, 0, -0.6691307, 0.74314475, 0, 275.80063, 232.49055)
+transform = Transform3D(1, 0, 0, 0, 0.9552783, -0.29570803, 0, 0.295708, 0.95527834, 0, 35, 120)
 fov = 79.1
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+mesh = SubResource("PlaneMesh_rmfcp")
 
 [editable path="Player/Camera"]

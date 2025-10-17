@@ -24,8 +24,11 @@ const STREET_PATH_SCENE := preload("res://game/map/paths/street_other.tscn")
 const STREET_PRIMARY_SCENE := preload("res://game/map/paths/street_primary.tscn")
 const STREET_SECONDARY_SCENE := preload("res://game/map/paths/street_secondary.tscn")
 const STREET_PEDESTRIAN_SCENE := preload("res://game/map/paths/street_pedestrian.tscn")
+const STREET_ENCLOSED_SCENE := preload("res://game/map/paths/street_enclosed.tscn")
 const BUILDING_SCENE := preload("res://game/map/paths/building.tscn")
+const BUILDING_ENCLOSED_SCENE := preload("res://game/map/paths/building_enclosed.tscn")
 const WATER_SCENE := preload("res://game/map/paths/water.tscn")
+const WATER_ENCLOSED_SCENE := preload("res://game/map/paths/water_enclosed.tscn")
 const RAILWAY_SCENE := preload("res://game/map/paths/railway.tscn")
 const TILE_SCENE := preload("res://game/map/tile.tscn")
 const BOUNDARY_SCENE := preload("res://game/map/paths/boundary.tscn")
@@ -130,7 +133,7 @@ const WORLD_TILE_ZOOM_LEVEL := 18
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 3
+const TILE_UNLOAD_RANGE := 11
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -140,7 +143,7 @@ const TILE_UNLOAD_RANGE := 3
 # 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 2
+const ADJACENT_TILE_RANGE := 10
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
 const WORLD_MIN_GPS := Vector2(-180.0, -85.05113)
@@ -323,8 +326,12 @@ func _ready():
 		if Debug.PARSER:
 			print("ON DESKTOP - SETTING DEBUG LOCATION")
 
+		# England
 		lat = 51.234286
 		lon = -2.999235
+		# Germany
+		lat = 48.05941
+		lon = 8.46027
 		await load_or_download_tiles(lat, lon)
 	else:
 		#var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
@@ -864,7 +871,7 @@ func parseXML(_file_path: String) -> MapData:
 					# https://wiki.openstreetmap.org/wiki/Key:sidewalk
 					# TODO: figure out how to parse this properly
 					pass
-				elif key == "waterway":
+				elif key == "waterway" || (key == "natural" && value == "coastline"):
 					mapData.waterMatrix.append(xzMatrix[matIDX])
 				elif key == "railway" && value != "razed":
 					mapData.railMatrix.append(xzMatrix[matIDX])
@@ -969,15 +976,38 @@ func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: Pac
 
 	scn.visible = false
 	parent.add_child(scn)
+	scn.curve.closed = is_path_closed(data)
 
 	scn.curve.set_point_count(data.size())
 	for i in data.size():
-		scn.curve.set_point_position(i, data[i])
+		if i == 0 || i == data.size() - 1:
+			scn.curve.set_point_position(i, data[i])
+		else:
+			scn.curve.set_point_position(i, data[i] + Vector3(0.0, 0.1, 0.0))
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS:
 			await get_tree().process_frame
 
 	scn.visible = true
 
+func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
+	var scn := packed_scene.instantiate() as Node3D
+	assert(scn)
+	var csg := scn.get_child(0) as CSGPolygon3D
+	assert(csg)
+
+	scn.visible = false
+	parent.add_child(scn)
+	var arr := PackedVector2Array()
+	arr.resize(data.size())
+	for i in data.size():
+		arr[i] = Vector2(data[i].x, data[i].z)
+		if WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS:
+			await get_tree().process_frame
+	csg.polygon = arr
+	scn.visible = true
+
+func is_path_closed(path: PackedVector3Array) -> bool:
+	return path && path.size() >= 3 && path[0].is_equal_approx(path[path.size() - 1])
 
 func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	tiles_waiting_to_load += 1
@@ -1060,17 +1090,27 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 	for ways in mapData.streetMatrix_pedestrian.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
+		if is_path_closed(mapData.streetMatrix_pedestrian):
+			#await create_and_update_polygon(STREET_ENCLOSED_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
+			# TODO: there's something to differentiate here: some enclosed paths should be areas, and others... not
+			await create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
+		else:
+			await create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
 
 	for ways in mapData.buildMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(BUILDING_SCENE, buildingNode, mapData.buildMatrix[ways])
+		#await create_and_update_path(BUILDING_SCENE, buildingNode, mapData.buildMatrix[ways])
+		assert(is_path_closed(mapData.buildMatrix[ways]))
+		await create_and_update_polygon(BUILDING_ENCLOSED_SCENE, buildingNode, mapData.buildMatrix[ways])
 
 	for ways in mapData.waterMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(WATER_SCENE, waterNode, mapData.waterMatrix[ways])
+		if is_path_closed(mapData.waterMatrix[ways]):
+			await create_and_update_polygon(WATER_ENCLOSED_SCENE, waterNode, mapData.waterMatrix[ways])
+		else:
+			await create_and_update_path(WATER_SCENE, waterNode, mapData.waterMatrix[ways])
 
 	for ways in mapData.railMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
@@ -1118,7 +1158,7 @@ func place_collectables(parent: Node3D, map_data: MapData) -> void:
 	var rng := get_deterministic_rng(map_data.boundaryData.tile_coordinate, 0)
 	var f := func(node_pos: Vector3):
 			var randomInt := rng.randi_range(0, 50)
-			if (randomInt <= 50):
+			if (randomInt <= 1):
 				var new_crystal = items[rng.randi_range(0, items.size() - 1)].instantiate()
 				new_crystal.scale = Vector3(10, 10, 10)
 				new_crystal.name = "%d - %s" % [parent.get_child_count(), new_crystal.name]

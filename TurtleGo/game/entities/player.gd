@@ -70,3 +70,4 @@ func _process(delta: float):
 	)
 
 	camera.global_position = global_position
+	camera.get_child(0).look_at(global_position, Vector3.UP)

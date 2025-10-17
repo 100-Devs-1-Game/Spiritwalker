@@ -9,6 +9,7 @@ _data = {
 point_count = 2
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j68vt"]
+shading_mode = 0
 albedo_color = Color(0.18, 0.18, 0.18, 1)
 
 [node name="path3D" type="Path3D"]

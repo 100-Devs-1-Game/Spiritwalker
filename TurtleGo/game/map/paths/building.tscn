@@ -15,13 +15,13 @@ albedo_color = Color(0.412152, 0.412152, 0.412152, 1)
 curve = SubResource("Curve3D_0rgk1")
 
 [node name="CSGPolygon3D" type="CSGPolygon3D" parent="."]
-polygon = PackedVector2Array(-2, 0, -2, 0.1, 2, 0.1, 2, 0)
+polygon = PackedVector2Array(-2, 0, -2, 4, 2, 4, 2, 0)
 mode = 2
 path_node = NodePath("..")
 path_interval_type = 0
 path_interval = 1.0
 path_simplify_angle = 0.0
-path_rotation = 2
+path_rotation = 1
 path_rotation_accurate = false
 path_local = true
 path_continuous_u = true
