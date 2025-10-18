@@ -90,7 +90,7 @@ const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 4.0
 # decrease this if there is too much lag from creating all the paths
 # but players moving at high speeds might experience delays
 # even if the tile is already downloaded
-const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
+const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 2
 
 # this will allow each path to load over multiple frames
 # e.g a road segment might take multiple frames to load
@@ -141,7 +141,7 @@ const WORLD_TILE_ZOOM_LEVEL := 17
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 6
+const TILE_UNLOAD_RANGE := 3
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -151,7 +151,7 @@ const TILE_UNLOAD_RANGE := 6
 # 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 5
+const ADJACENT_TILE_RANGE := 2
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
 const WORLD_MIN_GPS := Vector2(-180.0, -85.05113)
@@ -338,8 +338,8 @@ func _ready():
 		lat = 51.234286
 		lon = -2.999235
 		# Germany
-		lat = 48.05941
-		lon = 8.46027
+		#lat = 48.05941
+		#lon = 8.46027
 		# Portugal
 		#lat = 37.168008
 		#lon = -8.533642
@@ -364,7 +364,9 @@ func _ready():
 	regularly_unload_tiles()
 
 	regularly_download_queued_tiles()
-	regularly_load_queued_tiles()
+	for i in MAXIMUM_TILES_TO_LOAD_AT_ONCE:
+		regularly_load_queued_tiles()
+		await get_tree().create_timer(0.1).timeout
 
 	if OS.is_debug_build():
 		%FPS.visible = true
@@ -1069,7 +1071,7 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 
 	while ((is_instance_valid(mapNode)
 		&& tilecoords_being_replaced.size() >= MAXIMUM_TILES_TO_LOAD_AT_ONCE
-		&& tiles_loaded.has(mapData.boundaryData.tile_coordinate)
+		&& tiles_loaded.has(mapData.boundaryData.tile_coordinate) # make sure it's still in the "loaded" state, which was done before this
 		&& not tile_is_distant(mapData.boundaryData.tile_coordinate))
 		|| tilecoords_being_replaced.has(mapData.boundaryData.tile_coordinate)):
 		await get_tree().create_timer(0.5).timeout
