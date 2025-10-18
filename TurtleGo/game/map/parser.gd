@@ -332,6 +332,9 @@ func _ready():
 		# Germany
 		lat = 48.05941
 		lon = 8.46027
+		# Portugal
+		lat = 37.168008
+		lon = -8.533642
 		await load_or_download_tiles(lat, lon)
 	else:
 		#var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
