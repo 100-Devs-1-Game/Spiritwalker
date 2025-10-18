@@ -60,5 +60,11 @@ func get_half_length() -> float:
 func get_dimensions() -> Vector2:
 	return maximum - minimum
 
+# this is merc in "world space" (i.e the whole world, relative to lat/lon 0,0)
 func contains_merc(merc: Vector2) -> bool:
+	return valid && merc.x >= minimum.x && merc.x <= maximum.x && merc.y >= minimum.y && merc.y <= maximum.y
+
+# i.e the merc is relative to this boundaries center. useful for the paths that were processed for it
+func contains_relative_merc(merc: Vector2) -> bool:
+	merc += center
 	return valid && merc.x >= minimum.x && merc.x <= maximum.x && merc.y >= minimum.y && merc.y <= maximum.y

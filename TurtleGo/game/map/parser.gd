@@ -98,8 +98,16 @@ const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
 # NOTE: if you turn this off, you may just want to turn off the matrix too
-# WARNING: if this is enabled, paths seem to break on android ???? why
-const WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS := false
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 10
+var LOADING_PATHS_FRAMESKIP_COUNTER := 0
+
+# this will allow each polygon to load over multiple frames
+# e.g a building might take multiple frames to load
+# turn this on if you want to minimize stutters/freezes
+# turn this off if you want tiles to load quicker
+# NOTE: kinda untested
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 100
+var LOADING_POLYGONS_FRAMESKIP_COUNTER := 0
 
 # this will allow each matrix to load over multiple frames
 # e.g each road will take one frame to load, so all roads take multiple frames
@@ -120,7 +128,7 @@ const WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS := false
 # as there is more data to parse and process in to visual paths
 # creating bigger delays
 # NOTE: this changes the directory name for maps, so it's safe to experiment with it
-const WORLD_TILE_ZOOM_LEVEL := 18
+const WORLD_TILE_ZOOM_LEVEL := 17
 
 # this is how far away a tile must be from the players tile
 # before it is considered "distant"
@@ -133,7 +141,7 @@ const WORLD_TILE_ZOOM_LEVEL := 18
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 11
+const TILE_UNLOAD_RANGE := 6
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -143,7 +151,7 @@ const TILE_UNLOAD_RANGE := 11
 # 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 10
+const ADJACENT_TILE_RANGE := 5
 
 # I'm using GPS to mean lat/lon because I'm too lazy to type "lation" UwU
 const WORLD_MIN_GPS := Vector2(-180.0, -85.05113)
@@ -333,8 +341,8 @@ func _ready():
 		lat = 48.05941
 		lon = 8.46027
 		# Portugal
-		lat = 37.168008
-		lon = -8.533642
+		#lat = 37.168008
+		#lon = -8.533642
 		await load_or_download_tiles(lat, lon)
 	else:
 		#var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
@@ -824,6 +832,7 @@ func parseXML(_file_path: String) -> MapData:
 				var lon_xml = float(parser.get_named_attribute_value_safe("lon"))
 
 				var vec := mercatorProjection(lat_xml, lon_xml)
+				
 				xz_dict[id_xml] = Vector3(
 					vec.x - mapData.boundaryData.center.x,
 					0,
@@ -973,23 +982,64 @@ func playerBounds(x_merc: float, y_merc: float):
 		loading_from_playerbounds = false
 
 
-func create_and_update_path(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
+func create_and_update_path(boundary_data: BoundaryData, packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
 	var scn := packed_scene.instantiate() as Path3D
 	assert(scn)
 
 	scn.visible = false
-	parent.add_child(scn)
 	scn.curve.closed = is_path_closed(data)
 
+	# todo: cache node info of inside/outside
+	#var found_node_inside_boundary := false
+	#var is_inside_boundary := false
+	
+	var skipped_nodes := 0
+	
 	scn.curve.set_point_count(data.size())
 	for i in data.size():
+		##todo: cache node info of inside/outside
+		##var is_previous_inside_boundary := is_inside_boundary
+		##is_inside_boundary = boundary_data.contains_relative_merc(Vector2(data[i].x, data[i].z)
+		##if not found_node_inside_boundary:
+			##if is_inside_boundary:
+				##found_node_inside_boundary = true
+		
+		# todo: this looks bad with really long lines because the paths no longer overlap perfectly between lots of different nodes
+		# so it just doesn't really work. we would need proper deduplication by way/node ID's and rebuild paths dynamically
+		
+		# if we have nodes outside of our boundary for a unconnected path, then we don't need to draw them all
+		# we only need to draw the first node outside our borders (so the path extends at least that far)
+		# this helps MASSIVELY with long highways, rivers, etc
+		#if (not scn.curve.closed
+			#and i >= 2 #make sure every path has at least two nodes
+			#and not boundary_data.contains_relative_merc(Vector2(data[i-2].x, data[i-2].z)) # allow two nodes to extend outside, to be safe
+			#and not boundary_data.contains_relative_merc(Vector2(data[i-1].x, data[i-1].z))
+			#and not boundary_data.contains_relative_merc(Vector2(data[i].x, data[i].z))
+			#):
+			#print("skipping %s %d at pos %s" % [parent.name, i, data[i]])
+			#skipped_nodes += 1
+			#continue
+			 
 		if i == 0 || i == data.size() - 1:
-			scn.curve.set_point_position(i, data[i])
+			scn.curve.set_point_position(i - skipped_nodes, data[i])
 		else:
-			scn.curve.set_point_position(i, data[i] + Vector3(0.0, 0.1, 0.0))
-		if WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS:
-			await get_tree().process_frame
+			# by raising up the middle, we avoid weird z-fighting when two paths cross over eachother
+			# i.e the unconnected ends will be below the middles, hopefully helping to hide most artifacts
+			scn.curve.set_point_position(i - skipped_nodes, data[i] + Vector3(0.0, 0.1, 0.0))
+		
+		if WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS > 0:
+			if LOADING_PATHS_FRAMESKIP_COUNTER % WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS == 0:
+				await get_tree().process_frame
+			LOADING_PATHS_FRAMESKIP_COUNTER += 1
+		
+	#print("skipped %d nodes" % skipped_nodes)
+	scn.curve.set_point_count(data.size() - skipped_nodes)
 
+	parent.add_child(scn)
+	# the curve is only baked when it changes, but we don't want it to bake each frame as that causes extra lag
+	# so we do all the curve chanegs before we add it as a child, and then after adding it as a child, we lie and say it has changed
+	# by emitting this signal, which then rebakes it, which... okay it does freeze a lil bit for long ones, but it's okay
+	scn.curve_changed.emit()
 	scn.visible = true
 
 func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
@@ -1004,8 +1054,10 @@ func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: 
 	arr.resize(data.size())
 	for i in data.size():
 		arr[i] = Vector2(data[i].x, data[i].z)
-		if WAIT_ONE_FRAME_BETWEEN_LOADING_PATHS:
-			await get_tree().process_frame
+		if WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS > 0:
+			if LOADING_POLYGONS_FRAMESKIP_COUNTER % WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS == 0:
+				await get_tree().process_frame
+			LOADING_POLYGONS_FRAMESKIP_COUNTER += 1
 	csg.polygon = arr
 	scn.visible = true
 
@@ -1068,27 +1120,27 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
-	await create_and_update_path(BOUNDARY_SCENE, boundaryNode, boundary)
+	await create_and_update_path(mapData.boundaryData, BOUNDARY_SCENE, boundaryNode, boundary)
 
 	for ways in mapData.streetMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(STREET_PATH_SCENE, streetNode, mapData.streetMatrix[ways])
+		await create_and_update_path(mapData.boundaryData, STREET_PATH_SCENE, streetNode, mapData.streetMatrix[ways])
 
 	for ways in mapData.streetMatrix_trunk.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(STREET_PRIMARY_SCENE, streets_trunk, mapData.streetMatrix_trunk[ways])
+		await create_and_update_path(mapData.boundaryData, STREET_PRIMARY_SCENE, streets_trunk, mapData.streetMatrix_trunk[ways])
 
 	for ways in mapData.streetMatrix_primary.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(STREET_PRIMARY_SCENE, streets_primary, mapData.streetMatrix_primary[ways])
+		await create_and_update_path(mapData.boundaryData, STREET_PRIMARY_SCENE, streets_primary, mapData.streetMatrix_primary[ways])
 
 	for ways in mapData.streetMatrix_secondary.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(STREET_SECONDARY_SCENE, streets_secondary, mapData.streetMatrix_secondary[ways])
+		await create_and_update_path(mapData.boundaryData, STREET_SECONDARY_SCENE, streets_secondary, mapData.streetMatrix_secondary[ways])
 
 	for ways in mapData.streetMatrix_pedestrian.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
@@ -1096,9 +1148,9 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		if is_path_closed(mapData.streetMatrix_pedestrian):
 			#await create_and_update_polygon(STREET_ENCLOSED_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
 			# TODO: there's something to differentiate here: some enclosed paths should be areas, and others... not
-			await create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
+			await create_and_update_path(mapData.boundaryData, STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
 		else:
-			await create_and_update_path(STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
+			await create_and_update_path(mapData.boundaryData, STREET_PEDESTRIAN_SCENE, streets_pedestrian, mapData.streetMatrix_pedestrian[ways])
 
 	for ways in mapData.buildMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
@@ -1113,12 +1165,12 @@ func replaceMapScene(mapNode: Node3D, mapData: MapData):
 		if is_path_closed(mapData.waterMatrix[ways]):
 			await create_and_update_polygon(WATER_ENCLOSED_SCENE, waterNode, mapData.waterMatrix[ways])
 		else:
-			await create_and_update_path(WATER_SCENE, waterNode, mapData.waterMatrix[ways])
+			await create_and_update_path(mapData.boundaryData, WATER_SCENE, waterNode, mapData.waterMatrix[ways])
 
 	for ways in mapData.railMatrix.size():
 		if WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(RAILWAY_SCENE, railwayNode, mapData.railMatrix[ways])
+		await create_and_update_path(mapData.boundaryData, RAILWAY_SCENE, railwayNode, mapData.railMatrix[ways])
 
 	#mapNode.visible = true
 	tilecoords_being_replaced.erase(mapData.boundaryData.tile_coordinate)

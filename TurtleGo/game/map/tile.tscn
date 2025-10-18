@@ -41,7 +41,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
 
 [node name="boundary" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
-visible = false
 
 [node name="LatPosition" type="CSGBox3D" parent="."]
 unique_name_in_owner = true
