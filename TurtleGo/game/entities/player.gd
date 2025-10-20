@@ -1,6 +1,6 @@
 class_name Player extends AnimatableBody3D
 
-@export var parser: Parser
+@export var map: Map
 @onready var camera: Node3D = $Camera
 @onready var targetRotator: Node3D = $TargetRotator
 
@@ -36,9 +36,9 @@ func _process(delta: float):
 	# simulate infrequent GPS updates
 	if time_since_last_update >= 0.5:
 		time_since_last_update = 0.0
-		parser.locationUpdate({
-			"latitude": parser.lat,
-			"longitude": parser.lon,
+		map.location_update({
+			"latitude": map.lat,
+			"longitude": map.lon,
 		})
 	else:
 		time_since_last_update += delta
@@ -62,12 +62,8 @@ func _process(delta: float):
 		)
 		gps_offset = input_dir.normalized() * speed * delta * 0.005
 
-		parser.lon += gps_offset.x
-		parser.lat += gps_offset.y
-
-	$LatPosition.global_position = Maths.mercantorToGodotFromOrigin(
-		Maths.mercatorProjection(parser.lat, parser.lon)
-	)
+		map.lon += gps_offset.x
+		map.lat += gps_offset.y
 
 	camera.global_position = global_position
 	camera.get_child(0).look_at(global_position, Vector3.UP)

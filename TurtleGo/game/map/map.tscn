@@ -1,0 +1,191 @@
+[gd_scene load_steps=18 format=3 uid="uid://ccfor5yj8jlo8"]
+
+[ext_resource type="PackedScene" uid="uid://bwrteriduaif5" path="res://game/ui/ui.tscn" id="1_rmfcp"]
+[ext_resource type="Script" uid="uid://bcrkcc36mak7v" path="res://game/map/map.gd" id="1_y2akx"]
+[ext_resource type="PackedScene" uid="uid://xpf0qlm4agdp" path="res://game/map/parser.tscn" id="2_y2akx"]
+[ext_resource type="PackedScene" uid="uid://du6c2warfhxof" path="res://game/save/save_load.tscn" id="3_j1cge"]
+[ext_resource type="PackedScene" uid="uid://dys0s6mv1f4fu" path="res://game/map/tile_manager.tscn" id="4_ivcn2"]
+[ext_resource type="PackedScene" uid="uid://j8nd1qc28s7d" path="res://game/entities/player.tscn" id="4_ucqwh"]
+[ext_resource type="PackedScene" uid="uid://cdf1qamimyeyg" path="res://game/map/download_manager.tscn" id="5_668xw"]
+[ext_resource type="PackedScene" uid="uid://coyjefbogouuy" path="res://game/camera.tscn" id="5_n30op"]
+
+[sub_resource type="Gradient" id="Gradient_rmfcp"]
+colors = PackedColorArray(0, 0, 0.09803922, 1, 1, 0.85490197, 0.87058824, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_y2akx"]
+gradient = SubResource("Gradient_rmfcp")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ogpwb"]
+
+[sub_resource type="Sky" id="Sky_d7y1g"]
+sky_material = SubResource("ShaderMaterial_ogpwb")
+
+[sub_resource type="Environment" id="Environment_t1d16"]
+background_mode = 1
+background_color = Color(0.44818133, 0.7618069, 0.93163514, 1)
+sky = SubResource("Sky_d7y1g")
+sky_custom_fov = 15.4
+ambient_light_source = 2
+ambient_light_color = Color(0.4713503, 0.65894043, 0.6082004, 1)
+ambient_light_energy = 4.0
+reflected_light_source = 1
+adjustment_enabled = true
+adjustment_brightness = 1.4
+adjustment_contrast = 0.7
+adjustment_saturation = 1.5
+adjustment_color_correction = SubResource("GradientTexture1D_y2akx")
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_rmfcp"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rmfcp"]
+shading_mode = 0
+albedo_color = Color(0.53467405, 0.7544607, 0.524208, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_rmfcp"]
+material = SubResource("StandardMaterial3D_rmfcp")
+size = Vector2(20000, 20000)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ivcn2"]
+albedo_color = Color(0.47337472, 0.80662817, 0.9352143, 1)
+
+[node name="Map" type="Node3D"]
+script = ExtResource("1_y2akx")
+
+[node name="UI" parent="." instance=ExtResource("1_rmfcp")]
+
+[node name="Parser" parent="." instance=ExtResource("2_y2akx")]
+unique_name_in_owner = true
+
+[node name="TileManager" parent="." node_paths=PackedStringArray("parser", "download_manager") instance=ExtResource("4_ivcn2")]
+unique_name_in_owner = true
+parser = NodePath("../Parser")
+download_manager = NodePath("../DownloadManager")
+
+[node name="DownloadManager" parent="." instance=ExtResource("5_668xw")]
+unique_name_in_owner = true
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.897258, 0.441506, 0, -0.441506, -0.897258, 0, 17.5641, 0)
+light_color = Color(0.709188, 0.598017, 0.562156, 1)
+light_energy = 3.832
+light_indirect_energy = 9.279
+light_volumetric_fog_energy = 0.0
+light_angular_distance = 43.95
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_t1d16")
+camera_attributes = SubResource("CameraAttributesPractical_rmfcp")
+
+[node name="SaveLoad" parent="." instance=ExtResource("3_j1cge")]
+
+[node name="Player" parent="." node_paths=PackedStringArray("map") instance=ExtResource("4_ucqwh")]
+map = NodePath("..")
+
+[node name="Ground" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("PlaneMesh_rmfcp")
+skeleton = NodePath("../..")
+
+[node name="Camera" parent="Player" instance=ExtResource("5_n30op")]
+transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 0, 0)
+top_level = true
+
+[node name="Camera3D" parent="Player/Camera" index="0"]
+transform = Transform3D(1, 0, 0, 0, 0.9552783, -0.29570803, 0, 0.295708, 0.95527834, 0, 35, 120)
+fov = 79.1
+
+[node name="Button" type="Button" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -179.0
+offset_right = 419.0
+offset_bottom = 241.0
+grow_horizontal = 2
+scale = Vector2(0.6, 0.6)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Teleport"
+icon_alignment = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -329.0
+offset_top = -241.0
+offset_right = 329.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 6
+size_flags_vertical = 10
+alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading gps coordinates..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="LabelTileCoord" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "tilecoords"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="LabelTilesStatus" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label3" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "finished parsing"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label4" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "2024-08-21T15:09:46"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label5" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 10
+text = "checking if player is within bounds..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="FPS" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 10
+text = "checking if player is within bounds..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="LatPosition" type="CSGBox3D" parent="."]
+top_level = true
+size = Vector3(10, 10, 10)
+material = SubResource("StandardMaterial3D_ivcn2")
+
+[editable path="Player/Camera"]

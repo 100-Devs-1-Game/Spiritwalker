@@ -9,3 +9,5 @@ enum Level {
 const CREATURE := Level.None
 const PARSER := Level.None
 const PARSER_XML := Level.None
+const DOWNLOAD_MANAGER := Level.None
+const TILE_MANAGER := Level.None

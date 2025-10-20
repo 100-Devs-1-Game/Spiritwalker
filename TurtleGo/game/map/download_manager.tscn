@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://cdf1qamimyeyg"]
+
+[ext_resource type="Script" uid="uid://c4pcyfkgkywrj" path="res://game/map/download_manager.gd" id="1_la8ar"]
+
+[node name="DownloadManager" type="Node3D"]
+script = ExtResource("1_la8ar")
+
+[node name="HTTPRequest" type="HTTPRequest" parent="."]
+unique_name_in_owner = true
+timeout = 5.0

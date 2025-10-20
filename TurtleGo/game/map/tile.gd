@@ -9,4 +9,4 @@ class_name Tile extends Node3D
 @onready var streets: Node3D = $streets
 @onready var boundary: Node3D = $boundary
 
-var mapData: MapData
+var map_data: MapData

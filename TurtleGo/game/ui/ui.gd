@@ -11,5 +11,4 @@ func updateInventory(_collectable, _collCount):
 	#print_debug("found ", _collCount, _collectable)
 
 func _on_enable_gps_pressed():
-	print("button pressed")
-	Signals.enableGPS.emit()
+	Signals.gps_enabled.emit()

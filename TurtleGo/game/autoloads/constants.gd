@@ -17,7 +17,7 @@ const DOWNLOAD_QUEUED_TILE_EVERY_X_SECONDS := 0.5
 const DELAY_NEXT_DOWNLOAD_BY_X_SECONDS := 0.5
 
 # this is a failsafe in case something goes wrong
-const LOAD_OR_DOWNLOAD_NEIGHBOURING_TILES_EVERY_X_SECONDS := 5.0
+const LOAD_OR_DOWNLOAD_NEIGHBOURING_TILES_EVERY_X_SECONDS := 20.0
 
 # decrease this if there is too much lag, but it will increase CPU usage
 const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 4.0
@@ -25,7 +25,7 @@ const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 4.0
 # decrease this if there is too much lag from creating all the paths
 # but players moving at high speeds might experience delays
 # even if the tile is already downloaded
-const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 2
+const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
 
 # this will allow each path to load over multiple frames
 # e.g a road segment might take multiple frames to load
@@ -33,7 +33,7 @@ const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 2
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
 # NOTE: if you turn this off, you may just want to turn off the matrix too
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 10
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 5
 var LOADING_PATHS_FRAMESKIP_COUNTER := 0
 
 # this will allow each polygon to load over multiple frames
@@ -41,7 +41,7 @@ var LOADING_PATHS_FRAMESKIP_COUNTER := 0
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 100
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 50
 var LOADING_POLYGONS_FRAMESKIP_COUNTER := 0
 
 # this will allow each matrix to load over multiple frames

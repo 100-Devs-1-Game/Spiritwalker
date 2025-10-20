@@ -77,18 +77,16 @@ func inverseMercatorProjection(merc: Vector2) -> Vector2:
 
 
 func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
-	check_conversion(tile_coords)
-	var uv := calculate_uv_from_tile_coordinate(tile_coords)
-	var top_left_merc := calculate_merc_from_uv(uv)
+	var top_left_merc := calculate_merc_from_coords(tile_coords)
 
 	# now we have the top-left corner of the tile, but we want its bounding box
 	# we have to calculate the width/height of the tile, but we know that already in mercantor projection
 	# because the mercantor space is a consistent square
-
-	var top_left_gps := inverseMercatorProjection(top_left_merc)
-	#var test_top_left_gps_merc := mercatorProjection(top_left_gps.y, top_left_gps.x)
 	var bottom_right_merc := top_left_merc + Vector2(WORLD_TILE_DIMENSIONS_MERC.x, -WORLD_TILE_DIMENSIONS_MERC.y)
+
 	var bottom_right_gps := inverseMercatorProjection(bottom_right_merc)
+	var top_left_gps := inverseMercatorProjection(top_left_merc)
+
 	var lon_min := top_left_gps.x
 	var lat_max := top_left_gps.y
 	var lon_max := bottom_right_gps.x
@@ -98,6 +96,37 @@ func calculate_tile_bounding_box_gps(tile_coords: Vector2i) -> Rect2:
 		Vector2(lon_min, lat_min), # top left
 		Vector2(lon_max - lon_min, lat_max - lat_min) # size
 	)
+
+
+func calculate_coords_from_gps(lat: float, lon: float) -> Vector2i:
+	var merc := mercatorProjection(lat, lon)
+	var uv := calculate_uv_from_merc(merc)
+	var coords := calculate_tile_coordinate_from_uv(uv)
+	check_conversion(coords)
+	return coords
+
+
+func calculate_gps_from_coords(coords: Vector2i) -> Vector2:
+	check_conversion(coords)
+	var uv := calculate_uv_from_tile_coordinate(coords)
+	var merc := calculate_merc_from_uv(uv)
+	var gps := inverseMercatorProjection(merc)
+	return gps
+
+
+func calculate_merc_from_coords(coords: Vector2i) -> Vector2:
+	check_conversion(coords)
+	var uv := calculate_uv_from_tile_coordinate(coords)
+	var merc := calculate_merc_from_uv(uv)
+	return merc
+
+
+func calculate_coords_from_merc(merc: Vector2) -> Vector2i:
+	var uv := calculate_uv_from_merc(merc)
+	var coords := calculate_tile_coordinate_from_uv(uv)
+	check_conversion(coords)
+	return coords
+	
 
 func check_conversion(coords: Vector2i) -> void:
 	var uv := calculate_uv_from_tile_coordinate(coords)
@@ -118,11 +147,3 @@ func check_conversion(coords: Vector2i) -> void:
 	assert(uv2.is_equal_approx(uv_inv2))
 	assert(merc2.is_equal_approx(merc_inv2))
 	assert(coords_inv == coords_inv2)
-
-
-func mercantorToGodotFromOrigin(merc: Vector2) -> Vector3:
-	return Vector3(
-		merc.x - Parser.originMapData.boundaryData.center.x,
-		0.0,
-		Parser.originMapData.boundaryData.center.y - merc.y,
-	)
