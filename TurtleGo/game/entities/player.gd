@@ -65,8 +65,8 @@ func _process(delta: float):
 		parser.lon += gps_offset.x
 		parser.lat += gps_offset.y
 
-	$LatPosition.global_position = parser.mercantorToGodotFromOrigin(
-		Parser.mercatorProjection(parser.lat, parser.lon)
+	$LatPosition.global_position = Maths.mercantorToGodotFromOrigin(
+		Maths.mercatorProjection(parser.lat, parser.lon)
 	)
 
 	camera.global_position = global_position

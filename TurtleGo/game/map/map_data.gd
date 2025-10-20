@@ -20,8 +20,8 @@ class_name MapData extends Resource
 @export var boundaryData := BoundaryData.new()
 
 func updateBoundaryData(_minlat, _maxlat, _minlon, _maxlon):
-	var minimum := Parser.mercatorProjection(_minlat, _minlon)
-	var maximum := Parser.mercatorProjection(_maxlat, _maxlon)
+	var minimum := Maths.mercatorProjection(_minlat, _minlon)
+	var maximum := Maths.mercatorProjection(_maxlat, _maxlon)
 	var center := Vector2(
 		(minimum.x + maximum.x) / 2.0,
 		(minimum.y + maximum.y) / 2.0,

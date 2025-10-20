@@ -19,6 +19,9 @@ config/icon="res://icon.svg"
 
 Signals="*res://game/autoloads/signals.gd"
 Debug="*res://game/autoloads/debug.gd"
+Utils="*res://game/autoloads/utils.gd"
+Maths="*res://game/autoloads/maths.gd"
+Constants="*res://game/autoloads/constants.gd"
 
 [debug]
 
