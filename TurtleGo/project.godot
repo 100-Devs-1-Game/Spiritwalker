@@ -13,6 +13,7 @@ config_version=5
 config/name="TurtleGo"
 run/main_scene="uid://si01x4rkoojd"
 config/features=PackedStringArray("4.5", "Forward Plus")
+run/max_fps=30
 config/icon="res://icon.svg"
 
 [autoload]
@@ -88,6 +89,11 @@ pointing/emulate_touch_from_mouse=true
 3d_physics/layer_2="Player"
 3d_physics/layer_3="NPC"
 3d_physics/layer_4="Other"
+
+[physics]
+
+common/physics_ticks_per_second=10
+common/physics_interpolation=true
 
 [rendering]
 

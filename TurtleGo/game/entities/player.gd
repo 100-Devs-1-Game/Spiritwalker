@@ -25,14 +25,17 @@ func updatePosition(pos: Vector3, teleport: bool):
 
 	if teleport:
 		global_position = pos
+		reset_physics_interpolation()
 
 	oldPosition = global_position
 	newPosition = pos
 
 	$NewPosition.global_position = newPosition
+	$NewPosition.reset_physics_interpolation()
 	$OldPosition.global_position = oldPosition
+	$OldPosition.reset_physics_interpolation()
 
-func _process(delta: float):
+func _physics_process(delta: float):
 	# simulate infrequent GPS updates
 	if time_since_last_update >= 0.5:
 		time_since_last_update = 0.0
@@ -48,10 +51,10 @@ func _process(delta: float):
 	if newPosition && !oldPosition.is_equal_approx(newPosition):
 		targetRotator.look_at_from_position(oldPosition, newPosition, Vector3.UP)
 
-	rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y, 0.05)
+	rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y, 2.0 * delta)
 
 	if (oldPosition && newPosition) || (global_position != newPosition):
-		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 1.0)
+		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 2.0)
 
 	if OS.get_name() == "Windows" || OS.get_name() == "Linux":
 		var gps_offset: Vector2
