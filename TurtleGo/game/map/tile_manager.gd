@@ -329,7 +329,7 @@ func load_map(filepath: String) -> MapData:
 	return map_data
 
 
-func create_and_update_path(_boundary_data: BoundaryData, packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
+func create_and_update_path(boundary_data: BoundaryData, packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
 	var scn := packed_scene.instantiate() as Path3D
 	assert(scn)
 
@@ -353,19 +353,21 @@ func create_and_update_path(_boundary_data: BoundaryData, packed_scene: PackedSc
 		
 		# todo: this looks bad with really long lines because the paths no longer overlap perfectly between lots of different nodes
 		# so it just doesn't really work. we would need proper deduplication by way/node ID's and rebuild paths dynamically
+		# but... if we make the radius large enough, then it should be okay to help us with VERY distant nodes
+		# since we'll unload those other tiles before we reach them
 		
 		# if we have nodes outside of our boundary for a unconnected path, then we don't need to draw them all
 		# we only need to draw the first node outside our borders (so the path extends at least that far)
 		# this helps MASSIVELY with long highways, rivers, etc
-		#if (not scn.curve.closed
-			#and i >= 2 #make sure every path has at least two nodes
-			#and not boundary_data.contains_relative_merc(Vector2(data[i-2].x, data[i-2].z)) # allow two nodes to extend outside, to be safe
-			#and not boundary_data.contains_relative_merc(Vector2(data[i-1].x, data[i-1].z))
-			#and not boundary_data.contains_relative_merc(Vector2(data[i].x, data[i].z))
-			#):
+		if (Constants.PRUNE_NODES_BEYOND_X_TILES_ENABLED && not scn.curve.closed
+			and i >= 2 #make sure every path has at least two nodes
+			and not boundary_data.contains_relative_merc(Vector2(data[i-2].x, data[i-2].z) / Constants.PRUNE_NODES_BEYOND_X_TILES) # allow two nodes to extend outside, to be safe
+			and not boundary_data.contains_relative_merc(Vector2(data[i-1].x, data[i-1].z) / Constants.PRUNE_NODES_BEYOND_X_TILES)
+			and not boundary_data.contains_relative_merc(Vector2(data[i].x, data[i].z) / Constants.PRUNE_NODES_BEYOND_X_TILES)
+			):
 			#print("skipping %s %d at pos %s" % [parent.name, i, data[i]])
-			#skipped_nodes += 1
-			#continue
+			skipped_nodes += 1
+			continue
 			 
 		if i == 0 || i == data.size() - 1:
 			scn.curve.set_point_position(i - skipped_nodes, data[i])
@@ -378,8 +380,9 @@ func create_and_update_path(_boundary_data: BoundaryData, packed_scene: PackedSc
 			if Constants.LOADING_PATHS_FRAMESKIP_COUNTER % Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS == 0:
 				await get_tree().process_frame
 			Constants.LOADING_PATHS_FRAMESKIP_COUNTER += 1
-		
-	#print("skipped %d nodes" % skipped_nodes)
+	
+	if skipped_nodes:
+		print("skipped %d nodes (%f%%)" % [skipped_nodes, (float(skipped_nodes) / float(data.size())) * 100.0])
 	scn.curve.set_point_count(data.size() - skipped_nodes)
 
 	parent.add_child(scn)

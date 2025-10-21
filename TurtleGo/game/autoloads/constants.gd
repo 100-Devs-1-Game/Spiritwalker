@@ -72,7 +72,7 @@ const WORLD_TILE_ZOOM_LEVEL := 17
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 2
+const TILE_UNLOAD_RANGE := ADJACENT_TILE_RANGE + 1
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -83,3 +83,6 @@ const TILE_UNLOAD_RANGE := 2
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
 const ADJACENT_TILE_RANGE := 1
+
+const PRUNE_NODES_BEYOND_X_TILES_ENABLED := true
+const PRUNE_NODES_BEYOND_X_TILES := TILE_UNLOAD_RANGE * 3.0

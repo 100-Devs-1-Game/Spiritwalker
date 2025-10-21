@@ -36,11 +36,11 @@ func _ready():
 		#lat = 51.234286
 		#lon = -2.999235
 		# Germany
-		lat = 48.05941
-		lon = 8.46027
+		#lat = 48.05941
+		#lon = 8.46027
 		# Portugal
-		#lat = 37.168008
-		#lon = -8.533642
+		lat = 37.168008
+		lon = -8.533642
 		gps_manager.provide_gps_data({"latitude": lat, "longitude": lon})
 
 	if OS.is_debug_build():
