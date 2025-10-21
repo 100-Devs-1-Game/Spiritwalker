@@ -3,7 +3,7 @@
 [sub_resource type="Gradient" id="Gradient_ifdx4"]
 interpolation_mode = 1
 offsets = PackedFloat32Array(0, 0.05, 0.45, 0.55, 0.95)
-colors = PackedColorArray(1, 1, 1, 1, 0.61551535, 0.5871068, 0.4980994, 1, 0.6156863, 0.5882353, 0.49803922, 1, 0.6156863, 0.5882353, 0.49803922, 1, 1, 1, 1, 1)
+colors = PackedColorArray(0.6156863, 0.5882353, 0.49803922, 1, 0.61551535, 0.5871068, 0.4980994, 1, 0.6156863, 0.5882353, 0.49803922, 1, 0.6156863, 0.5882353, 0.49803922, 1, 0.6156863, 0.5882353, 0.49803922, 1)
 
 [resource]
 gradient = SubResource("Gradient_ifdx4")

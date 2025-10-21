@@ -14,3 +14,6 @@ class_name Tile extends Node3D
 @onready var boundary: Node3D = $Boundary
 
 var map_data: MapData
+
+func _ready() -> void:
+	boundary.visible = OS.is_debug_build()

@@ -153,7 +153,6 @@ func regularly_load_queued_tiles() -> void:
 
 		assert(Utils.has_map_tilecoords(coords))
 		var file := Utils.get_tile_filename_for_coords(coords)
-		print(coords)
 		var map_data := await load_map(file)
 		if map_data:
 			tilecoords_queued_for_download.erase(coords)
