@@ -61,6 +61,16 @@ const WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS := false
 # NOTE: this changes the directory name for maps, so it's safe to experiment with it
 const WORLD_TILE_ZOOM_LEVEL := 17
 
+# this is how many tiles to load around the player
+# increase this to allow the player to see more around them, without increasing zoom level
+# and without them having to move to another tile
+# 0 = don't load any adjacent tiles
+# 1 = load the 8 adjacent tiles
+# 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
+# etc
+# NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
+const ADJACENT_TILE_RANGE := 1
+
 # this is how far away a tile must be from the players tile
 # before it is considered "distant"
 # distant tiles will be unloaded (deleted)
@@ -73,16 +83,6 @@ const WORLD_TILE_ZOOM_LEVEL := 17
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
 const TILE_UNLOAD_RANGE := ADJACENT_TILE_RANGE + 1
-
-# this is how many tiles to load around the player
-# increase this to allow the player to see more around them, without increasing zoom level
-# and without them having to move to another tile
-# 0 = don't load any adjacent tiles
-# 1 = load the 8 adjacent tiles
-# 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
-# etc
-# NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 1
 
 const PRUNE_NODES_BEYOND_X_TILES_ENABLED := true
 const PRUNE_NODES_BEYOND_X_TILES := TILE_UNLOAD_RANGE * 3.0
