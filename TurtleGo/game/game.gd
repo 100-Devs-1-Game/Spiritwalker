@@ -21,3 +21,23 @@ func _ready() -> void:
 
 	Maths.check_conversion(Vector2i(1, 2))
 	Maths.check_conversion(Vector2i(2, 1))
+	
+	Signals.creature_combat_delayed.connect(
+		func(_creature_data: CreatureData) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+	)
+
+	Signals.creature_combat_started.connect(
+		func(_creature_data: CreatureData) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+	)
+
+	Signals.creature_combat_delayed.connect(
+		func(_creature_data: CreatureData) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+	)
+
+	Signals.player_pickedup_collectable.connect(
+		func(_name_id: String) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+	)

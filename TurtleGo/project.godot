@@ -16,6 +16,10 @@ config/features=PackedStringArray("4.5", "Forward Plus")
 run/max_fps=30
 config/icon="res://icon.svg"
 
+[audio]
+
+buses/default_bus_layout="uid://c1mmqpueeika"
+
 [autoload]
 
 Signals="*res://game/autoloads/signals.gd"
@@ -25,6 +29,7 @@ Maths="*res://game/autoloads/maths.gd"
 Constants="*res://game/autoloads/constants.gd"
 DialogueManager="*res://addons/dialogue_manager/dialogue_manager.gd"
 Dialogue="*res://game/autoloads/dialogue.gd"
+Audio="*res://game/autoloads/audio.gd"
 
 [debug]
 

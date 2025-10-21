@@ -5,7 +5,7 @@ signal player_position_updated(pos: Vector2, teleport: bool)
 signal player_entered_creature_range(creature: Creature)
 signal player_pickedup_collectable(name_id: String)
 
-signal creature_combat_start(creature_data: CreatureData)
+signal creature_combat_started(creature_data: CreatureData)
 signal creature_combat_delayed(creature_data: CreatureData)
 signal creature_captured(creature_data: CreatureData)
 

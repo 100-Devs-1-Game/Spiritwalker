@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 		global_position = global_position.move_toward(player.global_position, SPEED * delta)
 		if lengthsqrd <= 10*10:
 			Signals.creature_combat_delayed.emit(data)
-			#Signals.creature_combat_start.emit(data)
+			#Signals.creature_combat_started.emit(data)
 			if Debug.CREATURE:
 				print(self, " COMBAT")
 			player.creature_chasing = null
