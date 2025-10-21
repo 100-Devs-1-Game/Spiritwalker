@@ -80,26 +80,31 @@ func _on_gps_data_received(p_gps_manager: GpsManager) -> void:
 
 
 func check_if_new_map_needed():
+	var player_changed_tile := false
 	if gps_manager.last_known_tile_coordinates != previous_tile_coordinates:
 		#print("PLAYER HAS CHANGED TILE - from %s to %s" % [previous_tile_coordinates, gps_manager.last_known_tile_coordinates])
 		tile_manager.current_map_data = null
+		player_changed_tile = true
 
 	if tile_manager.tiles_loaded.has(gps_manager.last_known_tile_coordinates):
 		tile_manager.current_map_data = tile_manager.tiles_loaded[gps_manager.last_known_tile_coordinates].map_data
 
-	var needsNewMap := false
+	var needs_new_map := false
 	if !tile_manager.current_map_data || tile_manager.current_map_data.boundaryData.valid == false:
 		#print("PLAYER IS IN A TILE AND NOW WE NEED TO LOAD/DOWNLOAD IT - %s" % gps_manager.last_known_tile_coordinates)
-		needsNewMap = true
+		needs_new_map = true
 
-	if !needsNewMap:
+	if !needs_new_map && !player_changed_tile:
 		if OS.is_debug_build():
 			$VBoxContainer/Label5.text = "player within boundary box!"
 		return
-
-	if OS.is_debug_build():
-		$VBoxContainer/Label5.text = "out of bounds!"
 	
+	if needs_new_map:
+		if OS.is_debug_build():
+			$VBoxContainer/Label5.text = "out of bounds!"
+	
+	# even if we don't need the map we entered, we do need to grab the neighbouring tiles
+	# so we have to do this regardless (+ we can reprio existing queued tiles)
 	await tile_manager.load_or_download_tiles(gps_manager.last_known_gps_position)
 
 
