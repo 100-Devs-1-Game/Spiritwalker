@@ -30,7 +30,9 @@ var dialogue_line: DialogueLine:
 		if value:
 			dialogue_line = value
 			apply_dialogue_line()
+			Dialogue.dialogue_is_running = true
 		else:
+			Dialogue.dialogue_is_running = false
 			# The dialogue has finished so close the balloon
 			queue_free()
 	get:
@@ -63,6 +65,12 @@ func _ready() -> void:
 	mutation_cooldown.timeout.connect(_on_mutation_cooldown_timeout)
 	add_child(mutation_cooldown)
 
+	dialogue_label.skipped_typing.connect(Audio.play_ui.bind(Audio.UI_BUTTON_HIGHLIGHT))
+	dialogue_label.spoke.connect(
+		func(_letter: String, _letter_index: int, _speed: float):
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT, 0.3)
+	)
+
 
 func _unhandled_input(_event: InputEvent) -> void:
 	# Only the balloon is allowed to handle input while it's showing
@@ -71,7 +79,11 @@ func _unhandled_input(_event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	## Detect a change of locale and update the current dialogue line to show the new language
-	if what == NOTIFICATION_TRANSLATION_CHANGED and _locale != TranslationServer.get_locale() and is_instance_valid(dialogue_label):
+	if (
+		what == NOTIFICATION_TRANSLATION_CHANGED
+		and _locale != TranslationServer.get_locale()
+		and is_instance_valid(dialogue_label)
+	):
 		_locale = TranslationServer.get_locale()
 		var visible_ratio = dialogue_label.visible_ratio
 		self.dialogue_line = await resource.get_next_dialogue_line(dialogue_line.id)
@@ -80,7 +92,10 @@ func _notification(what: int) -> void:
 
 
 ## Start some dialogue
-func start(dialogue_resource: DialogueResource, title: String, extra_game_states: Array = []) -> void:
+func start(
+	dialogue_resource: DialogueResource, title: String, extra_game_states: Array = []
+) -> void:
+	Dialogue.dialogue_is_running = true
 	temporary_game_states = [self] + extra_game_states
 	is_waiting_for_input = false
 	resource = dialogue_resource
@@ -96,7 +111,7 @@ func apply_dialogue_line() -> void:
 	balloon.grab_focus()
 
 	character_label.visible = not dialogue_line.character.is_empty()
-	character_label.text = tr(dialogue_line.character, "dialogue")
+	character_label.text = tr(dialogue_line.character, "dialogue").to_upper()
 
 	dialogue_label.hide()
 	dialogue_label.dialogue_line = dialogue_line
@@ -118,7 +133,11 @@ func apply_dialogue_line() -> void:
 		balloon.focus_mode = Control.FOCUS_NONE
 		responses_menu.show()
 	elif dialogue_line.time != "":
-		var time = dialogue_line.text.length() * 0.02 if dialogue_line.time == "auto" else dialogue_line.time.to_float()
+		var time = (
+			dialogue_line.text.length() * 0.02
+			if dialogue_line.time == "auto"
+			else dialogue_line.time.to_float()
+		)
 		await get_tree().create_timer(time).timeout
 		next(dialogue_line.next_id)
 	else:
@@ -150,20 +169,30 @@ func _on_mutated(_mutation: Dictionary) -> void:
 func _on_balloon_gui_input(event: InputEvent) -> void:
 	# See if we need to skip typing of the dialogue
 	if dialogue_label.is_typing:
-		var mouse_was_clicked: bool = event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed()
+		var mouse_was_clicked: bool = (
+			event is InputEventMouseButton
+			and event.button_index == MOUSE_BUTTON_LEFT
+			and event.is_pressed()
+		)
 		var skip_button_was_pressed: bool = event.is_action_pressed(skip_action)
 		if mouse_was_clicked or skip_button_was_pressed:
 			get_viewport().set_input_as_handled()
 			dialogue_label.skip_typing()
 			return
 
-	if not is_waiting_for_input: return
-	if dialogue_line.responses.size() > 0: return
+	if not is_waiting_for_input:
+		return
+	if dialogue_line.responses.size() > 0:
+		return
 
 	# When there are no response options the balloon itself is the clickable thing
 	get_viewport().set_input_as_handled()
 
-	if event is InputEventMouseButton and event.is_pressed() and event.button_index == MOUSE_BUTTON_LEFT:
+	if (
+		event is InputEventMouseButton
+		and event.is_pressed()
+		and event.button_index == MOUSE_BUTTON_LEFT
+	):
 		next(dialogue_line.next_id)
 	elif event.is_action_pressed(next_action) and get_viewport().gui_get_focus_owner() == balloon:
 		next(dialogue_line.next_id)
@@ -171,6 +200,5 @@ func _on_balloon_gui_input(event: InputEvent) -> void:
 
 func _on_responses_menu_response_selected(response: DialogueResponse) -> void:
 	next(response.next_id)
-
 
 #endregion
