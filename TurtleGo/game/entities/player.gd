@@ -68,8 +68,8 @@ func shared_physics_update(delta: float):
 
 	rotation.y = lerp_angle(rotation.y, targetRotator.rotation.y, 2.0 * delta)
 
-	if (oldPosition && newPosition) || (global_position != newPosition):
-		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 2.0)
+	if (oldPosition && newPosition) || (not global_position.is_equal_approx(newPosition)):
+		global_position = oldPosition.lerp(newPosition, min(time_since_last_update_pos / 4.0, 1.0))
 
 	camera.global_position = global_position
 	camera.get_child(0).look_at(global_position, Vector3.UP)

@@ -51,7 +51,7 @@ func enable_gps_async():
 				#%LabelTileCoord.text = "ENABLE LOCATION PERMISSIONS"
 				#print("gps not permitted")
 			Signals.gps_permission_failed.emit()
-			await get_tree().create_timer(0.5).timeout
+			await get_tree().create_timer(3.0).timeout
 	else:
 		Signals.gps_permission_succeeded.emit()
 

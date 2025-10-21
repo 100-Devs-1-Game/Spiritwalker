@@ -92,21 +92,6 @@ func check_if_new_map_needed():
 		#print("PLAYER IS IN A TILE AND NOW WE NEED TO LOAD/DOWNLOAD IT - %s" % gps_manager.last_known_tile_coordinates)
 		needsNewMap = true
 
-	# QLD = queued for loading
-	# QDl = queued for downloading
-	# LD = loading
-	# TTL = total
-	if OS.is_debug_build():
-		%LabelTilesStatus.text = (
-			"%d/%d/%d/%d tiles QLD/QDL/LD/TTL" %
-				[
-					tile_manager.tilecoords_queued_for_loading.size(),
-					tile_manager.tilecoords_queued_for_download.size(),
-					tile_manager.tiles_waiting_to_load,
-					tile_manager.tiles_loaded.size() - tile_manager.tiles_waiting_to_load
-				]
-		)
-
 	if !needsNewMap:
 		if OS.is_debug_build():
 			$VBoxContainer/Label5.text = "player within boundary box!"
@@ -147,6 +132,21 @@ func _physics_process(_delta: float) -> void:
 	
 	if not GpsManager.is_valid_gps_position(gps_manager.last_known_gps_position):
 		return
+		
+	# QLD = queued for loading
+	# QDl = queued for downloading
+	# LD = loading
+	# TTL = total
+	if OS.is_debug_build():
+		%LabelTilesStatus.text = (
+			"%d/%d/%d/%d tiles QLD/QDL/LD/TTL" %
+				[
+					tile_manager.tilecoords_queued_for_loading.size(),
+					tile_manager.tilecoords_queued_for_download.size(),
+					tile_manager.tiles_waiting_to_load,
+					tile_manager.tiles_loaded.size() - tile_manager.tiles_waiting_to_load
+				]
+		)
 	
 	%DebugFutureGpsPosition.global_position = tile_manager.mercator_to_godot_from_origin(
 		Maths.mercatorProjection(
