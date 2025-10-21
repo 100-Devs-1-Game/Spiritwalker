@@ -9,7 +9,7 @@ _data = {
 point_count = 2
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gfemm"]
-albedo_color = Color(0.412152, 0.412152, 0.412152, 1)
+albedo_color = Color(0.4117647, 0.4509804, 0.4509804, 1)
 
 [node name="path3D" type="Path3D"]
 curve = SubResource("Curve3D_0rgk1")

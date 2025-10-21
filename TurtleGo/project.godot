@@ -23,10 +23,16 @@ Debug="*res://game/autoloads/debug.gd"
 Utils="*res://game/autoloads/utils.gd"
 Maths="*res://game/autoloads/maths.gd"
 Constants="*res://game/autoloads/constants.gd"
+DialogueManager="*res://addons/dialogue_manager/dialogue_manager.gd"
+Dialogue="*res://game/autoloads/dialogue.gd"
 
 [debug]
 
 gdscript/warnings/unused_signal=0
+
+[dialogue_manager]
+
+runtime/balloon_path="res://game/dialogue/balloon.tscn"
 
 [display]
 
@@ -38,7 +44,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/PraxisMapperGPSPlugin/plugin.cfg")
+enabled=PackedStringArray("res://addons/PraxisMapperGPSPlugin/plugin.cfg", "res://addons/dialogue_manager/plugin.cfg", "res://addons/format_on_save/plugin.cfg", "res://addons/script-ide/plugin.cfg")
 
 [filesystem]
 

@@ -99,6 +99,7 @@ text = "0"
 
 [node name="MenuStartBg" type="Sprite2D" parent="CanvasLayer"]
 unique_name_in_owner = true
+visible = false
 position = Vector2(540, 960)
 texture = SubResource("GradientTexture2D_24n6y")
 
