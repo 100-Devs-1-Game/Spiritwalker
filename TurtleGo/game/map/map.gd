@@ -20,6 +20,7 @@ var player_previous_tilecoords: Vector2i
 func _ready():
 	Signals.gps_enabled.connect(check_gps)
 	Signals.finished_parsing_tile.connect(_finished_parsing_tile)
+	Signals.started_loading_tile.connect(_started_loading_tile)
 	Signals.finished_loading_tile.connect(_finished_loading_tile)
 
 	var userOS = OS.get_name()
@@ -36,11 +37,11 @@ func _ready():
 		#lat = 51.234286
 		#lon = -2.999235
 		# Germany
-		#lat = 48.05941
-		#lon = 8.46027
+		lat = 48.05941
+		lon = 8.46027
 		# Portugal
-		lat = 37.168008
-		lon = -8.533642
+		#lat = 37.168008
+		#lon = -8.533642
 		await tile_manager.load_or_download_tiles(lat, lon)
 	else:
 		#var err := remove_recursive("user://maps/z%d/" % WORLD_TILE_ZOOM_LEVEL)
@@ -167,10 +168,19 @@ func _on_button_pressed():
 		"longitude": lon,
 	})
 
+
 func _finished_parsing_tile(_map_data: MapData) -> void:
 	$VBoxContainer/Label3.text = "finished parsing"
 
-func _finished_loading_tile(_map_data: MapData) -> void:
+
+func _started_loading_tile(map_data: MapData) -> void:
+	var player_current_tilecoords := Maths.calculate_coords_from_gps(lat, lon)
+	if map_data && map_data.boundaryData.valid:
+		if player_current_tilecoords == map_data.boundaryData.tile_coordinate:
+			tile_manager.current_map_data = map_data
+
+
+func _finished_loading_tile(_tile: Tile) -> void:
 	$VBoxContainer/Label4.text = str(Time.get_datetime_string_from_system())
 	# force everything to update after we load a map
 	# e.g this can trigger other maps to load/download

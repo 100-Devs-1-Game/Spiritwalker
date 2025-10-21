@@ -20,7 +20,7 @@ const DELAY_NEXT_DOWNLOAD_BY_X_SECONDS := 0.5
 const LOAD_OR_DOWNLOAD_NEIGHBOURING_TILES_EVERY_X_SECONDS := 20.0
 
 # decrease this if there is too much lag, but it will increase CPU usage
-const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 4.0
+const UNLOAD_DISTANT_TILES_EVERY_X_SECONDS := 60.0
 
 # decrease this if there is too much lag from creating all the paths
 # but players moving at high speeds might experience delays
@@ -33,7 +33,7 @@ const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
 # NOTE: if you turn this off, you may just want to turn off the matrix too
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 5
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 25
 var LOADING_PATHS_FRAMESKIP_COUNTER := 0
 
 # this will allow each polygon to load over multiple frames
@@ -41,7 +41,7 @@ var LOADING_PATHS_FRAMESKIP_COUNTER := 0
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to load quicker
 # NOTE: kinda untested
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 50
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 250
 var LOADING_POLYGONS_FRAMESKIP_COUNTER := 0
 
 # this will allow each matrix to load over multiple frames
@@ -76,7 +76,7 @@ const WORLD_TILE_ZOOM_LEVEL := 17
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully unload
 # NOTE: I suggest making this ADJACENT_TILE_RANGE+1 so the players previous tiles will be there if they turn around
-const TILE_UNLOAD_RANGE := 3
+const TILE_UNLOAD_RANGE := 2
 
 # this is how many tiles to load around the player
 # increase this to allow the player to see more around them, without increasing zoom level
@@ -86,4 +86,4 @@ const TILE_UNLOAD_RANGE := 3
 # 2 = load the 8 adjacent tiles, and the 16 tiles adjacent to those tiles
 # etc
 # NOTE: depending on the "WAIT_ONE_FRAME" settings, it may take some time for the tile to fully load
-const ADJACENT_TILE_RANGE := 2
+const ADJACENT_TILE_RANGE := 1

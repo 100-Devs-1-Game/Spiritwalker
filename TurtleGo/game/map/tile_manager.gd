@@ -9,7 +9,7 @@ var tilecoords_queued_for_loading: Array[Vector2i]
 # these tiles are either being loaded or unloaded
 var tilecoords_being_replaced: Array[Vector2i]
 
-# these tils are either waiting to load or are still loading
+# these tiles are either waiting to load or are still loading
 var tiles_waiting_to_load: int
 
 # these tiles are either fully loaded or still being loaded
@@ -22,7 +22,7 @@ var last_known_gps: Vector2 = Vector2.ZERO
 # the first map we load is considered the "0, 0" origin for all other maps
 # this is used to convert from mercantor units to "godot units"
 # e.g to avoid all godot positions being in the millions
-static var origin_map_data := MapData.new()
+var origin_map_data := MapData.new()
 
 # the current map that the player is in, or null if we don't have it loaded yet
 var current_map_data := MapData.new()
@@ -35,6 +35,7 @@ func _ready() -> void:
 
 	Signals.download_succeeded.connect(_on_map_download_succeeded)
 	
+	# wait until we have a real GPS location
 	while last_known_gps.is_equal_approx(Vector2.ZERO):
 		await get_tree().create_timer(0.5).timeout
 
@@ -42,7 +43,7 @@ func _ready() -> void:
 	# this is... a fail safe, but it shouldn't be necessary
 	regularly_load_tiles()
 
-	# also keep unloading tiles that are far away from us
+	# also keep unloading tiles that are far away from the player
 	regularly_unload_tiles()
 
 	regularly_download_queued_tiles()
@@ -50,14 +51,14 @@ func _ready() -> void:
 		regularly_load_queued_tiles()
 		await get_tree().create_timer(0.1).timeout
 
-func _on_map_download_succeeded(filepath: String, gps: Vector2, coords: Vector2i) -> void:
+func _on_map_download_succeeded(filepath: String, _gps: Vector2, coords: Vector2i) -> void:
 	Maths.check_conversion(coords)
 	
-	var map_data := await parse_and_replace_map(filepath.trim_suffix(".xml"))
+	var map_data := await load_map(filepath.trim_suffix(".xml"))
 	if !map_data:
-		if download_manager.can_download_map():
-			print("FAILED TO PARSE DOWNLOADED MAP, RETRYING")
-			download_manager.download_map_from_gps(gps)
+		if not tilecoords_queued_for_download.has(coords):
+			print("FAILED TO PARSE DOWNLOADED MAP. REATTEMPTING SOON")
+			tilecoords_queued_for_download.append(coords)
 		return
 
 	if tilecoords_queued_for_download.has(map_data.boundaryData.tile_coordinate) || tilecoords_queued_for_loading.has(map_data.boundaryData.tile_coordinate):
@@ -124,7 +125,7 @@ func regularly_download_queued_tiles() -> void:
 		if Debug.TILE_MANAGER:
 			print("DL Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_download.size() - 1])
 
-		download_manager.download_map_tilecoords(coords)
+		download_manager.download_map_from_coords(coords)
 		tilecoords_queued_for_loading.erase(coords)
 		tilecoords_queued_for_download.erase(coords)
 
@@ -144,8 +145,9 @@ func regularly_load_queued_tiles() -> void:
 
 		assert(Utils.has_map_tilecoords(coords))
 		var file := Utils.get_tile_filename_for_coords(coords)
-		var success := await parse_and_replace_map(file)
-		if success:
+		print(coords)
+		var map_data := await load_map(file)
+		if map_data:
 			tilecoords_queued_for_download.erase(coords)
 			if Debug.PARSER:
 				print("LD Q. TILE : %sx-%sy (%d remaining)" % [coords.x, coords.y, tilecoords_queued_for_loading.size()])
@@ -183,6 +185,8 @@ func unload_tile(coords: Vector2i) -> void:
 	if Debug.TILE_MANAGER >= Debug.Level.All:
 		print("UNLDD. TILE: %sx-%sy" % [coords.x, coords.y])
 
+	Signals.started_unloading_tile.emit(found_tile)
+
 	if Constants.WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS:
 		for child in found_tile.get_children():
 			if is_instance_valid(child):
@@ -198,6 +202,8 @@ func unload_tile(coords: Vector2i) -> void:
 	found_tile.queue_free()
 	tiles_loaded.erase(coords)
 	tilecoords_being_replaced.erase(coords)
+
+	Signals.finished_unloading_tile.emit(coords)
 
 
 func load_or_download_tiles(lat: float, lon: float) -> int:
@@ -231,8 +237,8 @@ func load_or_download_tiles(lat: float, lon: float) -> int:
 				tilecoords_queued_for_loading.erase(coords)
 				# try and instantly load this tile since it's our priority
 				var file := Utils.get_tile_filename_for_coords(coords)
-				var success := await parse_and_replace_map(file)
-				if success:
+				var map_data := await load_map(file)
+				if map_data && map_data.boundaryData.valid:
 					# remove it from the queue in case it was added by someone else before
 					tiles_added += 1
 					tilecoords_queued_for_download.erase(coords)
@@ -258,66 +264,40 @@ func load_or_download_tiles(lat: float, lon: float) -> int:
 		
 	return tiles_added
 
-
-func parse_and_replace_map(_file_path: String) -> MapData:
+func load_map(filepath: String) -> MapData:
 	const TILE_SCENE := preload("res://game/map/tile.tscn")
-
-	var map_data := MapData.new()
-
-	if ResourceLoader.exists(_file_path + ".tres"):
-		map_data = ResourceLoader.load(_file_path + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
-		if not map_data:
-			print("how is that possible? ", _file_path + ".tres")
-			print_stack()
-			DirAccess.remove_absolute(_file_path + ".tres")
-
+	
+	var map_data := parser.parse_map(filepath)
 	if not map_data or not map_data.boundaryData.valid:
-		if not FileAccess.file_exists(_file_path + ".xml"):
-			if Debug.PARSER:
-				print("failed to find .tres or xml: ", _file_path)
-			return null
+		return map_data
 
-		#print("failed to find .tres, parsing xml: ", _file_path)
-		map_data = parser.parse_xml(_file_path + ".xml")
-		if not map_data or not map_data.boundaryData.valid:
-			print("parsed xml but generated invalid boundary: ", _file_path)
-			return null
-
-		map_data.resource_path = _file_path + ".tres"
-		assert(map_data.resource_path)
-		#print("parsed xml, saving tile to file: ", map_data.resource_path)
-		ResourceSaver.save(map_data)
-	else:
-		pass
-		#print("found .tres: ", _file_path)
-	
-	Signals.finished_parsing_tile.emit(map_data)
-	
-	var player_current_tilecoords := Maths.calculate_coords_from_gps(last_known_gps.y, last_known_gps.x)
-	if map_data && map_data.boundaryData.valid:
-		if player_current_tilecoords == map_data.boundaryData.tile_coordinate:
-			current_map_data = map_data
-		if !origin_map_data || !origin_map_data.boundaryData.valid:
-			origin_map_data = map_data
+	# the first valid map we load will become our origin tile
+	if !origin_map_data || !origin_map_data.boundaryData.valid:
+		origin_map_data = map_data
 
 	var found_tile: Tile = tiles_loaded.get(map_data.boundaryData.tile_coordinate)
+	if found_tile:
+		assert(found_tile.map_data == map_data)
+		return map_data
 
-	if not found_tile:
-		found_tile = TILE_SCENE.instantiate()
-		found_tile.name = str(map_data.boundaryData.tile_coordinate)
-		found_tile.map_data = map_data
-		tiles.add_child(found_tile)
+	Signals.started_loading_tile.emit(map_data)
 
-		var offset := mercator_to_godot_from_origin(map_data.boundaryData.center)
-		found_tile.global_position = offset
+	var new_tile: Tile = TILE_SCENE.instantiate()
+	new_tile.name = str(map_data.boundaryData.tile_coordinate)
+	new_tile.map_data = map_data
+	tiles.add_child(new_tile)
 
-		tiles_loaded[map_data.boundaryData.tile_coordinate] = found_tile
+	var offset := mercator_to_godot_from_origin(map_data.boundaryData.center)
+	new_tile.global_position = offset
 
-		await replace_map_scene(found_tile, map_data)
-		place_collectables(found_tile.collectables, map_data)
-		place_creatures(found_tile.creatures, map_data)
+	tiles_loaded[map_data.boundaryData.tile_coordinate] = new_tile
 
-	Signals.finished_loading_tile.emit(map_data)
+	await replace_map_scene(new_tile)
+	place_collectables(new_tile.collectables, map_data)
+	place_creatures(new_tile.creatures, map_data)
+
+	Signals.finished_loading_tile.emit(new_tile)
+
 	return map_data
 
 
@@ -400,12 +380,12 @@ func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: 
 	csg.polygon = arr
 	scn.visible = true
 
-func replace_map_scene(map_node: Node3D, map_data: MapData):
+func replace_map_scene(tile: Tile):
 	const STREET_PATH_SCENE := preload("res://game/map/paths/street_other.tscn")
 	const STREET_PRIMARY_SCENE := preload("res://game/map/paths/street_primary.tscn")
 	const STREET_SECONDARY_SCENE := preload("res://game/map/paths/street_secondary.tscn")
 	const STREET_PEDESTRIAN_SCENE := preload("res://game/map/paths/street_pedestrian.tscn")
-	const STREET_ENCLOSED_SCENE := preload("res://game/map/paths/street_enclosed.tscn")
+	#const STREET_ENCLOSED_SCENE := preload("res://game/map/paths/street_enclosed.tscn")
 	const BUILDING_SCENE := preload("res://game/map/paths/building.tscn")
 	const BUILDING_ENCLOSED_SCENE := preload("res://game/map/paths/building_enclosed.tscn")
 	const WATER_SCENE := preload("res://game/map/paths/water.tscn")
@@ -415,51 +395,32 @@ func replace_map_scene(map_node: Node3D, map_data: MapData):
 
 	tiles_waiting_to_load += 1
 
-	while ((is_instance_valid(map_node)
+	while ((is_instance_valid(tile)
 		&& tilecoords_being_replaced.size() >= Constants.MAXIMUM_TILES_TO_LOAD_AT_ONCE
-		&& tiles_loaded.has(map_data.boundaryData.tile_coordinate) # make sure it's still in the "loaded" state, which was done before this
-		&& not tile_is_distant(map_data.boundaryData.tile_coordinate))
-		|| tilecoords_being_replaced.has(map_data.boundaryData.tile_coordinate)):
+		&& tiles_loaded.has(tile.map_data.boundaryData.tile_coordinate) # make sure it's still in the "loaded" state, which was done before this
+		&& not tile_is_distant(tile.map_data.boundaryData.tile_coordinate))
+		|| (is_instance_valid(tile) && tilecoords_being_replaced.has(tile.map_data.boundaryData.tile_coordinate))):
 		await get_tree().create_timer(0.5).timeout
 
 	# tried to replace a tile which was unloaded, or will be unloaded soon
-	if (not is_instance_valid(map_node)
-		or not tiles_loaded.has(map_data.boundaryData.tile_coordinate)
-		or tile_is_distant(map_data.boundaryData.tile_coordinate)):
+	if (not is_instance_valid(tile)
+		or not tiles_loaded.has(tile.map_data.boundaryData.tile_coordinate)
+		or tile_is_distant(tile.map_data.boundaryData.tile_coordinate)):
 		tiles_waiting_to_load -= 1
 		return
 
 	#map_node.visible = true
-	tilecoords_being_replaced.append(map_data.boundaryData.tile_coordinate)
+	tilecoords_being_replaced.append(tile.map_data.boundaryData.tile_coordinate)
 
 	#delete all path3D instances of the old map
-	for way in map_node.get_children():
+	for way in tile.get_children():
 		for path in way.get_children():
 			if path is Path3D:
 				# this shouldn't be possible anymore, right?
 				assert(false)
 				path.queue_free()
 
-	var streetNode := map_node.get_node("streets")
-	assert(streetNode)
-	var streets_trunk := map_node.get_node("streets_trunk")
-	assert(streets_trunk)
-	var streets_primary := map_node.get_node("streets_primary")
-	assert(streets_primary)
-	var streets_secondary := map_node.get_node("streets_secondary")
-	assert(streets_secondary)
-	var streets_pedestrian := map_node.get_node("streets_pedestrian")
-	assert(streets_pedestrian)
-	var buildingNode := map_node.get_node("buildings")
-	assert(buildingNode)
-	var waterNode := map_node.get_node("water")
-	assert(waterNode)
-	var railwayNode := map_node.get_node("railway")
-	assert(railwayNode)
-	var boundaryNode := map_node.get_node("boundary")
-	assert(boundaryNode)
-
-	var boundaryBox: float = map_data.boundaryData.get_half_length()
+	var boundaryBox: float = tile.map_data.boundaryData.get_half_length()
 	var boundary: PackedVector3Array = [
 		Vector3(boundaryBox, 0, boundaryBox),
 		Vector3(-boundaryBox, 0, boundaryBox),
@@ -468,60 +429,62 @@ func replace_map_scene(map_node: Node3D, map_data: MapData):
 		Vector3(boundaryBox, 0, boundaryBox)
 	]
 
-	await create_and_update_path(map_data.boundaryData, BOUNDARY_SCENE, boundaryNode, boundary)
+	await create_and_update_path(tile.map_data.boundaryData, BOUNDARY_SCENE, tile.boundary, boundary)
 
-	for ways in map_data.streetMatrix.size():
+	for ways in tile.map_data.streetMatrix.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(map_data.boundaryData, STREET_PATH_SCENE, streetNode, map_data.streetMatrix[ways])
+		await create_and_update_path(tile.map_data.boundaryData, STREET_PATH_SCENE, tile.streets, tile.map_data.streetMatrix[ways])
 
-	for ways in map_data.streetMatrix_trunk.size():
+	for ways in tile.map_data.streetMatrix_trunk.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(map_data.boundaryData, STREET_PRIMARY_SCENE, streets_trunk, map_data.streetMatrix_trunk[ways])
+		await create_and_update_path(tile.map_data.boundaryData, STREET_PRIMARY_SCENE, tile.streets_trunk, tile.map_data.streetMatrix_trunk[ways])
 
-	for ways in map_data.streetMatrix_primary.size():
+	for ways in tile.map_data.streetMatrix_primary.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(map_data.boundaryData, STREET_PRIMARY_SCENE, streets_primary, map_data.streetMatrix_primary[ways])
+		await create_and_update_path(tile.map_data.boundaryData, STREET_PRIMARY_SCENE, tile.streets_primary, tile.map_data.streetMatrix_primary[ways])
 
-	for ways in map_data.streetMatrix_secondary.size():
+	for ways in tile.map_data.streetMatrix_secondary.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(map_data.boundaryData, STREET_SECONDARY_SCENE, streets_secondary, map_data.streetMatrix_secondary[ways])
+		await create_and_update_path(tile.map_data.boundaryData, STREET_SECONDARY_SCENE, tile.streets_secondary, tile.map_data.streetMatrix_secondary[ways])
 
-	for ways in map_data.streetMatrix_pedestrian.size():
+	for ways in tile.map_data.streetMatrix_pedestrian.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		if Utils.is_path_closed(map_data.streetMatrix_pedestrian):
+		if Utils.is_path_closed(tile.map_data.streetMatrix_pedestrian):
 			#await create_and_update_polygon(STREET_ENCLOSED_SCENE, streets_pedestrian, map_data.streetMatrix_pedestrian[ways])
 			# TODO: there's something to differentiate here: some enclosed paths should be areas, and others... not
-			await create_and_update_path(map_data.boundaryData, STREET_PEDESTRIAN_SCENE, streets_pedestrian, map_data.streetMatrix_pedestrian[ways])
+			await create_and_update_path(tile.map_data.boundaryData, STREET_PEDESTRIAN_SCENE, tile.streets_pedestrian, tile.map_data.streetMatrix_pedestrian[ways])
 		else:
-			await create_and_update_path(map_data.boundaryData, STREET_PEDESTRIAN_SCENE, streets_pedestrian, map_data.streetMatrix_pedestrian[ways])
+			await create_and_update_path(tile.map_data.boundaryData, STREET_PEDESTRIAN_SCENE, tile.streets_pedestrian, tile.map_data.streetMatrix_pedestrian[ways])
 
-	for ways in map_data.buildMatrix.size():
+	for ways in tile.map_data.buildMatrix.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		#await create_and_update_path(BUILDING_SCENE, buildingNode, map_data.buildMatrix[ways])
-		assert(Utils.is_path_closed(map_data.buildMatrix[ways]))
-		await create_and_update_polygon(BUILDING_ENCLOSED_SCENE, buildingNode, map_data.buildMatrix[ways])
-
-	for ways in map_data.waterMatrix.size():
-		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
-			await get_tree().process_frame
-		if Utils.is_path_closed(map_data.waterMatrix[ways]):
-			await create_and_update_polygon(WATER_ENCLOSED_SCENE, waterNode, map_data.waterMatrix[ways])
+		if Utils.is_path_closed(tile.map_data.buildMatrix[ways]):
+			await create_and_update_polygon(BUILDING_ENCLOSED_SCENE, tile.buildings, tile.map_data.buildMatrix[ways])
 		else:
-			await create_and_update_path(map_data.boundaryData, WATER_SCENE, waterNode, map_data.waterMatrix[ways])
+			assert(false)
+			await create_and_update_path(tile.map_data.boundaryData, BUILDING_SCENE, tile.buildings, tile.map_data.buildMatrix[ways])
 
-	for ways in map_data.railMatrix.size():
+	for ways in tile.map_data.waterMatrix.size():
 		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
 			await get_tree().process_frame
-		await create_and_update_path(map_data.boundaryData, RAILWAY_SCENE, railwayNode, map_data.railMatrix[ways])
+		if Utils.is_path_closed(tile.map_data.waterMatrix[ways]):
+			await create_and_update_polygon(WATER_ENCLOSED_SCENE, tile.water, tile.map_data.waterMatrix[ways])
+		else:
+			await create_and_update_path(tile.map_data.boundaryData, WATER_SCENE, tile.water, tile.map_data.waterMatrix[ways])
+
+	for ways in tile.map_data.railMatrix.size():
+		if Constants.WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX:
+			await get_tree().process_frame
+		await create_and_update_path(tile.map_data.boundaryData, RAILWAY_SCENE, tile.railway, tile.map_data.railMatrix[ways])
 
 	#map_node.visible = true
-	tilecoords_being_replaced.erase(map_data.boundaryData.tile_coordinate)
+	tilecoords_being_replaced.erase(tile.map_data.boundaryData.tile_coordinate)
 	tiles_waiting_to_load -= 1
 	
 
@@ -539,10 +502,10 @@ func foreach_nodepos(map_data: MapData, matrix: Array[PackedVector3Array], f: Ca
 func place_collectables(parent: Node3D, map_data: MapData) -> void:
 	const CRYSTAL_BLUE_SCENE := preload("res://game/entities/collectables/crystal_blue.tscn")
 	const CRYSTAL_GREEN_SCENE := preload("res://game/entities/collectables/crystal_green.tscn")
-	const CRYSTAL_ORANGE_SCENE := preload("res://game/entities/collectables/crystal_orange.tscn")
+	#const CRYSTAL_ORANGE_SCENE := preload("res://game/entities/collectables/crystal_orange.tscn")
 	const CRYSTAL_PINK_SCENE := preload("res://game/entities/collectables/crystal_pink.tscn")
 	const CRYSTAL_PURPLE_SCENE := preload("res://game/entities/collectables/crystal_purple.tscn")
-	const CRYSTAL_YELLOW_SCENE := preload("res://game/entities/collectables/crystal_yellow.tscn")
+	#const CRYSTAL_YELLOW_SCENE := preload("res://game/entities/collectables/crystal_yellow.tscn")
 	const items := [CRYSTAL_BLUE_SCENE, CRYSTAL_GREEN_SCENE, CRYSTAL_PINK_SCENE, CRYSTAL_PURPLE_SCENE]
 
 	var rng := Utils.get_deterministic_rng(map_data.boundaryData.tile_coordinate, 0)
@@ -583,7 +546,6 @@ func place_creatures(parent: Node3D, map_data: MapData) -> void:
 	foreach_nodepos(map_data, map_data.streetMatrix_trunk, f)
 	foreach_nodepos(map_data, map_data.streetMatrix_primary, f)
 	foreach_nodepos(map_data, map_data.streetMatrix_secondary, f)
-
 
 
 # coords_from would e.g be the tile the player is in

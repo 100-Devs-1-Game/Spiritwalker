@@ -5,44 +5,44 @@
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6hs8k"]
 albedo_color = Color(0.47337472, 0.80662817, 0.9352143, 1)
 
-[node name="tile" type="Node3D"]
+[node name="Tile" type="Node3D"]
 script = ExtResource("1_troad")
 
-[node name="collectables" type="Node3D" parent="."]
+[node name="Collectables" type="Node3D" parent="."]
 
-[node name="creatures" type="Node3D" parent="."]
+[node name="Creatures" type="Node3D" parent="."]
 
-[node name="buildings" type="Node3D" parent="."]
+[node name="Buildings" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
 
-[node name="water" type="Node3D" parent="."]
+[node name="Water" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
 
-[node name="railway" type="Node3D" parent="."]
+[node name="Railway" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
 
-[node name="other" type="Node3D" parent="."]
+[node name="Other" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
 
-[node name="streets" type="Node3D" parent="."]
+[node name="Streets" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 
-[node name="streets_trunk" type="Node3D" parent="."]
+[node name="StreetsTrunk" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
 
-[node name="streets_primary" type="Node3D" parent="."]
+[node name="StreetsPrimary" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16, 0)
 
-[node name="streets_secondary" type="Node3D" parent="."]
+[node name="StreetsSecondary" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.14, 0)
 
-[node name="streets_pedestrian" type="Node3D" parent="."]
+[node name="StreetsPedestrian" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
 
-[node name="boundary" type="Node3D" parent="."]
+[node name="Boundary" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
 
-[node name="LatPosition" type="CSGBox3D" parent="."]
+[node name="DebugCenter" type="CSGBox3D" parent="."]
 unique_name_in_owner = true
 visible = false
 size = Vector3(10, 10, 10)

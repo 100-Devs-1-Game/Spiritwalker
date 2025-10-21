@@ -17,8 +17,11 @@ func _ready() -> void:
 	http_request.request_completed.connect(_on_request_completed)
 
 func can_download_map() -> bool:
-	return _inflight_download_requests > 0
+	return _inflight_download_requests <= 0
 
+func download_map_from_coords(coords: Vector2i):
+	download_map_from_gps(Maths.calculate_gps_from_coords(coords))
+	
 func download_map_from_gps(gps: Vector2):
 	if gps == Vector2.ZERO:
 		push_error("tried to download a map for lat/lon of 0/0 - do we have a valid position yet?")
@@ -74,11 +77,15 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 
 	
 func _finish_download() -> void:
+	_inflight_download_requests -= 1
+	assert(_inflight_download_requests >= 0)
+
 	var fp := filepath
 	var gps := active_download_gps
 	var coords := active_download_tilecoords
-	_inflight_download_requests -= 1
+	
 	filepath = ""
 	active_download_tilecoords = Vector2.ZERO
 	active_download_gps = Vector2.ZERO
+	
 	Signals.download_finished.emit(fp, gps, coords)

@@ -1,7 +1,39 @@
 class_name Parser extends Node3D
 
-#read the osm data from openstreetmap.org
-func parse_xml(filepath: String) -> MapData:
+
+func parse_map(filepath: String) -> MapData:
+	if ResourceLoader.exists(filepath + ".tres"):
+		var existing_map_data := ResourceLoader.load(filepath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
+		if existing_map_data && existing_map_data.boundaryData.valid:
+			return existing_map_data
+		
+		print("how is that possible? ", filepath + ".tres")
+		print_stack()
+		DirAccess.remove_absolute(filepath + ".tres")
+	
+	if not FileAccess.file_exists(filepath + ".xml"):
+		if Debug.PARSER:
+			print("failed to find .tres or xml: ", filepath)
+		return null
+
+	Signals.started_parsing_tile.emit(filepath)
+	
+	#print("failed to find .tres, parsing xml: ", filepath)
+	var map_data := _parse_xml(filepath + ".xml")
+	if not map_data or not map_data.boundaryData.valid:
+		print("parsed xml but generated invalid map or boundary: ", filepath)
+		Signals.finished_parsing_tile.emit(filepath, map_data)
+		return null
+
+	map_data.resource_path = filepath + ".tres"
+	assert(map_data.resource_path)
+	#print("parsed xml, saving tile to file: ", map_data.resource_path)
+	ResourceSaver.save(map_data)
+	Signals.finished_parsing_tile.emit(map_data)
+	return map_data
+
+
+func _parse_xml(filepath: String) -> MapData:
 	var matIDX: int = 0
 	var listWaypoints: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
 	var listMember: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from memberMatrix
@@ -9,7 +41,7 @@ func parse_xml(filepath: String) -> MapData:
 	var wayID_to_waypoint_dict = {}
 	var wayID: int
 	var xzMatrix: Array[PackedVector3Array] = [] #contains the waypoints from the tag <nd> in the loaded osm file
-	var memberMatrix: Array[Array] = [[]] #contains the wayIDs from the tag <member> in the loaded osm file
+	var memberMatrix: Array[Array] = [] #contains the wayIDs from the tag <member> in the loaded osm file
 	var xz_dict = {} #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
 	var memberIDX: int = -1
 

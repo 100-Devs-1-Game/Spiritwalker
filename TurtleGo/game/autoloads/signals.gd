@@ -19,5 +19,11 @@ signal download_failed(filepath: String, gps: Vector2, coords: Vector2i)
 signal download_finished(filepath: String, gps: Vector2, coords: Vector2i)
 
 ## Tile Manager
-signal finished_parsing_tile(map_data: MapData)
-signal finished_loading_tile(map_data: MapData)
+signal started_parsing_tile(filepath: String)
+signal finished_parsing_tile(filepath: String, map_data: MapData)
+
+signal started_loading_tile(map_data: MapData)
+signal finished_loading_tile(tile: Tile)
+
+signal started_unloading_tile(tile: Tile)
+signal finished_unloading_tile(coords: Vector2i)
