@@ -31,25 +31,21 @@ const MAXIMUM_TILES_TO_LOAD_AT_ONCE := 1
 # e.g a road segment might take multiple frames to load
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to load quicker
-# NOTE: kinda untested
-# NOTE: if you turn this off, you may just want to turn off the matrix too
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 25
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_PATHS := 30
 var LOADING_PATHS_FRAMESKIP_COUNTER := 0
 
 # this will allow each polygon to load over multiple frames
 # e.g a building might take multiple frames to load
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to load quicker
-# NOTE: kinda untested
-const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 250
+const WAIT_ONE_FRAME_BETWEEN_LOADING_EVERY_X_POLYGONS := 300
 var LOADING_POLYGONS_FRAMESKIP_COUNTER := 0
 
 # this will allow each matrix to load over multiple frames
 # e.g each road will take one frame to load, so all roads take multiple frames
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to load instantly
-# NOTE: kinda untested
-const WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX := true
+const WAIT_ONE_FRAME_BETWEEN_LOADING_MATRIX := false
 
 # turn this on if you want to minimize stutters/freezes
 # turn this off if you want tiles to unload instantly

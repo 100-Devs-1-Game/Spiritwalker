@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://6to8pe2w8ryu"]
+
+[ext_resource type="Script" uid="uid://b2342emdyy0e3" path="res://game/map/gps_manager.gd" id="1_ib8xi"]
+
+[node name="GpsManager" type="Node3D"]
+script = ExtResource("1_ib8xi")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://ccfor5yj8jlo8"]
+[gd_scene load_steps=19 format=3 uid="uid://ccfor5yj8jlo8"]
 
 [ext_resource type="PackedScene" uid="uid://bwrteriduaif5" path="res://game/ui/ui.tscn" id="1_rmfcp"]
 [ext_resource type="Script" uid="uid://bcrkcc36mak7v" path="res://game/map/map.gd" id="1_y2akx"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://dys0s6mv1f4fu" path="res://game/map/tile_manager.tscn" id="4_ivcn2"]
 [ext_resource type="PackedScene" uid="uid://j8nd1qc28s7d" path="res://game/entities/player.tscn" id="4_ucqwh"]
 [ext_resource type="PackedScene" uid="uid://cdf1qamimyeyg" path="res://game/map/download_manager.tscn" id="5_668xw"]
+[ext_resource type="PackedScene" uid="uid://6to8pe2w8ryu" path="res://game/map/gps_manager.tscn" id="5_bfe5m"]
 [ext_resource type="PackedScene" uid="uid://coyjefbogouuy" path="res://game/camera.tscn" id="5_n30op"]
 
 [sub_resource type="Gradient" id="Gradient_rmfcp"]
@@ -56,10 +57,14 @@ script = ExtResource("1_y2akx")
 [node name="Parser" parent="." instance=ExtResource("2_y2akx")]
 unique_name_in_owner = true
 
-[node name="TileManager" parent="." node_paths=PackedStringArray("parser", "download_manager") instance=ExtResource("4_ivcn2")]
+[node name="TileManager" parent="." node_paths=PackedStringArray("parser", "download_manager", "gps_manager") instance=ExtResource("4_ivcn2")]
 unique_name_in_owner = true
 parser = NodePath("../Parser")
 download_manager = NodePath("../DownloadManager")
+gps_manager = NodePath("../GpsManager")
+
+[node name="GpsManager" parent="." instance=ExtResource("5_bfe5m")]
+unique_name_in_owner = true
 
 [node name="DownloadManager" parent="." instance=ExtResource("5_668xw")]
 unique_name_in_owner = true
@@ -79,6 +84,7 @@ camera_attributes = SubResource("CameraAttributesPractical_rmfcp")
 [node name="SaveLoad" parent="." instance=ExtResource("3_j1cge")]
 
 [node name="Player" parent="." node_paths=PackedStringArray("map") instance=ExtResource("4_ucqwh")]
+unique_name_in_owner = true
 map = NodePath("..")
 
 [node name="Ground" type="MeshInstance3D" parent="Player"]
@@ -183,7 +189,8 @@ text = "checking if player is within bounds..."
 horizontal_alignment = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="LatPosition" type="CSGBox3D" parent="."]
+[node name="DebugFutureGpsPosition" type="CSGBox3D" parent="."]
+unique_name_in_owner = true
 top_level = true
 size = Vector3(10, 10, 10)
 material = SubResource("StandardMaterial3D_ivcn2")

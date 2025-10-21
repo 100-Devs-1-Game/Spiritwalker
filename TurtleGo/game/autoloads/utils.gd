@@ -70,3 +70,19 @@ func has_map_tilecoords(coords: Vector2i) -> bool:
 
 func is_path_closed(path: PackedVector3Array) -> bool:
 	return path && path.size() >= 3 && path[0].is_equal_approx(path[path.size() - 1])
+
+
+static var _is_mobile_device := -1
+func is_mobile_device() -> bool:
+	if _is_mobile_device == 0:
+		return false
+	elif _is_mobile_device == 1:
+		return true
+	
+	var userOS = OS.get_name()
+	if userOS == "Android" || userOS == "iOS":
+		_is_mobile_device = 1
+		return true
+
+	_is_mobile_device = -1
+	return false

@@ -2,6 +2,7 @@ class_name TileManager extends Node3D
 
 @export var parser: Parser
 @export var download_manager: DownloadManager 
+@export var gps_manager: GpsManager
 
 var tilecoords_queued_for_download: Array[Vector2i]
 var tilecoords_queued_for_loading: Array[Vector2i]
@@ -17,8 +18,6 @@ var tiles_waiting_to_load: int
 # the Tile contains the MapData associated with it
 var tiles_loaded: Dictionary[Vector2i, Tile]
 
-var last_known_gps: Vector2 = Vector2.ZERO
-
 # the first map we load is considered the "0, 0" origin for all other maps
 # this is used to convert from mercantor units to "godot units"
 # e.g to avoid all godot positions being in the millions
@@ -32,13 +31,15 @@ var current_map_data := MapData.new()
 func _ready() -> void:
 	assert(parser)
 	assert(download_manager)
+	assert(gps_manager)
 
 	Signals.download_succeeded.connect(_on_map_download_succeeded)
 	
-	# wait until we have a real GPS location
-	while last_known_gps.is_equal_approx(Vector2.ZERO):
-		await get_tree().create_timer(0.5).timeout
+	await gps_manager.wait_for_first_gps_position()
+	start()
 
+
+func start() -> void:
 	# infinitely try and download our (and neighbouring) tiles
 	# this is... a fail safe, but it shouldn't be necessary
 	regularly_load_tiles()
@@ -47,9 +48,11 @@ func _ready() -> void:
 	regularly_unload_tiles()
 
 	regularly_download_queued_tiles()
+
 	for i in Constants.MAXIMUM_TILES_TO_LOAD_AT_ONCE:
 		regularly_load_queued_tiles()
 		await get_tree().create_timer(0.1).timeout
+
 
 func _on_map_download_succeeded(filepath: String, _gps: Vector2, coords: Vector2i) -> void:
 	Maths.check_conversion(coords)
@@ -61,24 +64,28 @@ func _on_map_download_succeeded(filepath: String, _gps: Vector2, coords: Vector2
 			tilecoords_queued_for_download.append(coords)
 		return
 
-	if tilecoords_queued_for_download.has(map_data.boundaryData.tile_coordinate) || tilecoords_queued_for_loading.has(map_data.boundaryData.tile_coordinate):
-		if Debug.PARSER:
-			print("LOADED TILE: %sx-%sy (%d & %d remaining)" % [
-				map_data.boundaryData.tile_coordinate.x,
-				map_data.boundaryData.tile_coordinate.y,
-				tilecoords_queued_for_loading.size(),
-				tilecoords_queued_for_download.size(),
-			])
+	if Debug.TILE_MANAGER >= Debug.Level.Some:
+		print("LOADED TILE AFTER DOWNLOAD: %sx-%sy (%d & %d remaining)" % [
+			map_data.boundaryData.tile_coordinate.x,
+			map_data.boundaryData.tile_coordinate.y,
+			tilecoords_queued_for_loading.size(),
+			tilecoords_queued_for_download.size(),
+		])
 
 	if coords != map_data.boundaryData.tile_coordinate:
 		push_warning("we downloaded the tile %s but we thought we were downloading the tile %s? how?" % [map_data.boundaryData.tile_coordinate, coords])
 		assert(false)
 
+	if Debug.TILE_MANAGER >= Debug.Level.All:
+		print("erasing tile from loading/downloading queues, now that is loaded after the download: %s" % map_data.boundaryData.tile_coordinate)
 	tilecoords_queued_for_loading.erase(map_data.boundaryData.tile_coordinate)
 	tilecoords_queued_for_download.erase(map_data.boundaryData.tile_coordinate)
 
 
 func mercator_to_godot_from_origin(merc: Vector2) -> Vector3:
+	if not origin_map_data or not origin_map_data.boundaryData.valid:
+		return Vector3(0.0, 0.0, 0.0)
+	
 	return Vector3(
 		merc.x - origin_map_data.boundaryData.center.x,
 		0.0,
@@ -89,9 +96,10 @@ func mercator_to_godot_from_origin(merc: Vector2) -> Vector3:
 func regularly_load_tiles():
 	while true:
 		await get_tree().create_timer(Constants.LOAD_OR_DOWNLOAD_NEIGHBOURING_TILES_EVERY_X_SECONDS).timeout
-		var tiles_added := await load_or_download_tiles(last_known_gps.y, last_known_gps.x)
+		var tiles_added := await load_or_download_tiles(gps_manager.last_known_gps_position)
 		if tiles_added:
 			print("FAILSAFE ADDED %d TILES" % tiles_added)
+
 
 func regularly_unload_tiles():
 	while true:
@@ -185,7 +193,7 @@ func unload_tile(coords: Vector2i) -> void:
 	if Debug.TILE_MANAGER >= Debug.Level.All:
 		print("UNLDD. TILE: %sx-%sy" % [coords.x, coords.y])
 
-	Signals.started_unloading_tile.emit(found_tile)
+	Signals.tile_unloading_started.emit(found_tile)
 
 	if Constants.WAIT_ONE_FRAME_BETWEEN_UNLOADING_PATHS:
 		for child in found_tile.get_children():
@@ -203,23 +211,29 @@ func unload_tile(coords: Vector2i) -> void:
 	tiles_loaded.erase(coords)
 	tilecoords_being_replaced.erase(coords)
 
-	Signals.finished_unloading_tile.emit(coords)
+	Signals.tile_unloading_finished.emit(coords)
 
 
-func load_or_download_tiles(lat: float, lon: float) -> int:
+func load_or_download_tiles(gps: Vector2) -> int:		
 	var tiles_added := 0
 
-	if is_zero_approx(lat) && is_zero_approx(lon):
+	if not GpsManager.is_valid_gps_position(gps):
 		print("tried to load or download tiles with invalid GPS location - do we have a valid location yet?")
 		return tiles_added
 
-	var our_tile_coords := Maths.calculate_coords_from_gps(lat, lon)
+	var our_tile_coords := Maths.calculate_coords_from_gps(gps.y, gps.x)
 	var tilecoords_to_check := get_adjacent_coords(our_tile_coords)
+	
+	if Debug.TILE_MANAGER == Debug.Level.All:
+		print("TM: load_or_download_tiles called for tile %s, which has %d tiles to also check" % [our_tile_coords, tilecoords_to_check.size()])
+	
 	#this being last is important for forcing it to the front later
 	tilecoords_to_check.append(our_tile_coords)
 
 	for coords in tilecoords_to_check:
 		if tiles_loaded.has(coords):
+			if Debug.TILE_MANAGER == Debug.Level.All:
+				print("TM: tried to load/download a tile which is already loading/loaded: %s" % coords)
 			continue
 
 		if tilecoords_queued_for_download.has(coords):
@@ -227,12 +241,16 @@ func load_or_download_tiles(lat: float, lon: float) -> int:
 			# note: since our direct tile is last in our array, we force it to the front last, prioritising it more
 			tilecoords_queued_for_download.erase(coords)
 			tilecoords_queued_for_download.insert(0, coords)
+			if Debug.TILE_MANAGER == Debug.Level.All:
+				print("TM: tried to load/download a tile which is already queued for download: %s" % coords)
 			continue
 
 		var is_queued_for_loading := tilecoords_queued_for_loading.has(coords)
 		var has_map_downloaded := Utils.has_map_tilecoords(coords)
 		if has_map_downloaded:
 			if our_tile_coords == coords:
+				if Debug.TILE_MANAGER == Debug.Level.All:
+					print("TM: trying to load priority tile, which is downloaded: %s" % coords)
 				# remove it from the queue in case it was added by someone else before
 				tilecoords_queued_for_loading.erase(coords)
 				# try and instantly load this tile since it's our priority
@@ -240,25 +258,33 @@ func load_or_download_tiles(lat: float, lon: float) -> int:
 				var map_data := await load_map(file)
 				if map_data && map_data.boundaryData.valid:
 					# remove it from the queue in case it was added by someone else before
+					if Debug.TILE_MANAGER == Debug.Level.All:
+						print("TM: finished loading priority tile, which is: %s" % coords)
 					tiles_added += 1
 					tilecoords_queued_for_download.erase(coords)
 					continue
 				# else fall through and go straight to priority download
 			elif not is_queued_for_loading:
+				if Debug.TILE_MANAGER == Debug.Level.All:
+					print("TM: trying to load/download a non-priority tile which is now queued for loading: %s" % coords)
 				tiles_added += 1
 				tilecoords_queued_for_loading.insert(0, coords)
 				continue
 			elif is_queued_for_loading:
 				# repriotise the adjacent tiles to load towards the front
 				# our important one should have been loaded instantly and not queued
+				if Debug.TILE_MANAGER == Debug.Level.All:
+					print("TM: trying to load/download a non-priority tile which is now reprioritised for loading: %s" % coords)
 				tilecoords_queued_for_loading.erase(coords)
 				tilecoords_queued_for_loading.insert(0, coords)
 				continue
-
+		
 		# either we didn't have a map or we failed when loading it just now
 		# so let's queue up a download
 		# and prioritise these over the others
 		# (our main node is last to be inserted at the front, for most priority)
+		if Debug.TILE_MANAGER == Debug.Level.All:
+			print("TM: trying to download tile, it is now queued at the front: %s" % coords)
 		tiles_added += 1
 		tilecoords_queued_for_download.insert(0, coords)
 		
@@ -280,7 +306,10 @@ func load_map(filepath: String) -> MapData:
 		assert(found_tile.map_data == map_data)
 		return map_data
 
-	Signals.started_loading_tile.emit(map_data)
+	if map_data && map_data.boundaryData.valid && gps_manager.last_known_tile_coordinates == map_data.boundaryData.tile_coordinate:
+		current_map_data = map_data
+
+	Signals.tile_loading_started.emit(map_data)
 
 	var new_tile: Tile = TILE_SCENE.instantiate()
 	new_tile.name = str(map_data.boundaryData.tile_coordinate)
@@ -296,7 +325,7 @@ func load_map(filepath: String) -> MapData:
 	place_collectables(new_tile.collectables, map_data)
 	place_creatures(new_tile.creatures, map_data)
 
-	Signals.finished_loading_tile.emit(new_tile)
+	Signals.tile_loading_finished.emit(new_tile)
 
 	return map_data
 

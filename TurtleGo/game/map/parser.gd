@@ -16,20 +16,20 @@ func parse_map(filepath: String) -> MapData:
 			print("failed to find .tres or xml: ", filepath)
 		return null
 
-	Signals.started_parsing_tile.emit(filepath)
+	Signals.tile_parsing_started.emit(filepath)
 	
 	#print("failed to find .tres, parsing xml: ", filepath)
 	var map_data := _parse_xml(filepath + ".xml")
 	if not map_data or not map_data.boundaryData.valid:
 		print("parsed xml but generated invalid map or boundary: ", filepath)
-		Signals.finished_parsing_tile.emit(filepath, map_data)
+		Signals.tile_parsing_finished.emit(filepath, map_data)
 		return null
 
 	map_data.resource_path = filepath + ".tres"
 	assert(map_data.resource_path)
 	#print("parsed xml, saving tile to file: ", map_data.resource_path)
 	ResourceSaver.save(map_data)
-	Signals.finished_parsing_tile.emit(map_data)
+	Signals.tile_parsing_finished.emit(map_data)
 	return map_data
 
 

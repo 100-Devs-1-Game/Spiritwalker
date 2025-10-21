@@ -13,15 +13,17 @@ var time_since_last_update := 0.0
 var time_since_last_update_pos := 0.0
 
 var creature_chasing: Node3D = null
+var gps_offset: Vector2
 
 func _ready():
 	Signals.playerPos.connect(updatePosition)
+
 
 func updatePosition(pos: Vector3, teleport: bool):
 	time_since_last_update_pos = 0.0
 	if (global_position - pos).length_squared() > 1000 * 1000:
 		teleport = true
-		print("TELEPORTING PLAYER AS WE ARE VERY FAR AWAY FOR A LERP")
+		print("TELEPORTING PLAYER AS WE ARE VERY FAR AWAY FOR A LERP - %s vs %s" % [global_position, pos])
 
 	if teleport:
 		global_position = pos
@@ -35,17 +37,30 @@ func updatePosition(pos: Vector3, teleport: bool):
 	$OldPosition.global_position = oldPosition
 	$OldPosition.reset_physics_interpolation()
 
-func _physics_process(delta: float):
-	# simulate infrequent GPS updates
+
+func mobile_physics_update(_delta: float):
+	pass
+
+
+func desktop_physics_update(delta: float):
 	if time_since_last_update >= 0.5:
 		time_since_last_update = 0.0
-		map.location_update({
-			"latitude": map.lat,
-			"longitude": map.lon,
+		map.gps_manager.provide_gps_data({
+			"latitude": map.gps_manager.last_known_gps_position.y + gps_offset.y,
+			"longitude": map.gps_manager.last_known_gps_position.x + gps_offset.x,
 		})
+		gps_offset = Vector2.ZERO
 	else:
 		time_since_last_update += delta
 
+	var input_dir := Vector2(
+		Input.get_axis(&"left", &"right"),
+		Input.get_axis(&"down", &"up"),
+	)
+	gps_offset += input_dir.normalized() * speed * delta * 0.005
+
+
+func shared_physics_update(delta: float):
 	time_since_last_update_pos += delta
 
 	if newPosition && !oldPosition.is_equal_approx(newPosition):
@@ -56,17 +71,14 @@ func _physics_process(delta: float):
 	if (oldPosition && newPosition) || (global_position != newPosition):
 		global_position = oldPosition.lerp(newPosition, time_since_last_update_pos / 2.0)
 
-	if OS.get_name() == "Windows" || OS.get_name() == "Linux":
-		var gps_offset: Vector2
-
-		var input_dir := Vector2(
-			Input.get_axis(&"left", &"right"),
-			Input.get_axis(&"down", &"up"),
-		)
-		gps_offset = input_dir.normalized() * speed * delta * 0.005
-
-		map.lon += gps_offset.x
-		map.lat += gps_offset.y
-
 	camera.global_position = global_position
 	camera.get_child(0).look_at(global_position, Vector3.UP)
+
+
+func _physics_process(delta: float):
+	if Utils.is_mobile_device():
+		mobile_physics_update(delta)
+	else:
+		desktop_physics_update(delta)
+	
+	shared_physics_update(delta)
