@@ -2,13 +2,6 @@
 
 [ext_resource type="Script" uid="uid://bciyi7nyjsoub" path="res://game/ui/ui.gd" id="1_nb4k0"]
 
-[sub_resource type="Gradient" id="Gradient_6cny8"]
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_24n6y"]
-gradient = SubResource("Gradient_6cny8")
-width = 1080
-height = 1920
-
 [sub_resource type="Gradient" id="Gradient_tbgav"]
 colors = PackedColorArray(0, 0.42352942, 0, 1, 1, 1, 1, 1)
 
@@ -33,13 +26,15 @@ colors = PackedColorArray(0.68242913, 0.18569514, 0.21950665, 1, 1, 1, 1, 1)
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_f7g7r"]
 gradient = SubResource("Gradient_ikh6o")
 
+[sub_resource type="Gradient" id="Gradient_6cny8"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_24n6y"]
+gradient = SubResource("Gradient_6cny8")
+width = 1080
+height = 1920
+
 [node name="UI" type="Node"]
 script = ExtResource("1_nb4k0")
-
-[node name="MenuStartBg" type="Sprite2D" parent="."]
-visible = false
-position = Vector2(540, 960)
-texture = SubResource("GradientTexture2D_24n6y")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
@@ -56,6 +51,7 @@ size_flags_horizontal = 10
 size_flags_vertical = 2
 
 [node name="CollectableContainer" type="GridContainer" parent="CanvasLayer/PanelContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -101,8 +97,14 @@ stretch_mode = 5
 layout_mode = 2
 text = "0"
 
+[node name="MenuStartBg" type="Sprite2D" parent="CanvasLayer"]
+unique_name_in_owner = true
+position = Vector2(540, 960)
+texture = SubResource("GradientTexture2D_24n6y")
+
 [node name="GpsPanel" type="PanelContainer" parent="CanvasLayer"]
 unique_name_in_owner = true
+visible = false
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

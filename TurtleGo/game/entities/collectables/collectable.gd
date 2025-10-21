@@ -16,5 +16,5 @@ func _on_body_entered(body):
 		return
 
 	var collectable: String = get_child(0).name
-	Signals.addCollectable.emit(collectable)
+	Signals.player_pickedup_collectable.emit(collectable)
 	queue_free()

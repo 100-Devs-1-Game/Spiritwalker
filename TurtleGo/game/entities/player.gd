@@ -16,10 +16,10 @@ var creature_chasing: Node3D = null
 var gps_offset: Vector2
 
 func _ready():
-	Signals.playerPos.connect(updatePosition)
+	Signals.player_position_updated.connect(_on_player_position_updated)
 
 
-func updatePosition(pos: Vector3, teleport: bool):
+func _on_player_position_updated(pos: Vector3, teleport: bool):
 	time_since_last_update_pos = 0.0
 	if (global_position - pos).length_squared() > 1000 * 1000:
 		teleport = true

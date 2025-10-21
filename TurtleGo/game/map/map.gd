@@ -60,7 +60,7 @@ func _on_gps_data_received(p_gps_manager: GpsManager) -> void:
 
 	var player_pos := tile_manager.mercator_to_godot_from_origin(gps_manager.last_known_merc_position)
 	# TODO: if we are more than... 100 tiles? away, then reset the origin?
-	Signals.playerPos.emit(player_pos, false)
+	Signals.player_position_updated.emit(player_pos, false)
 	
 	await check_if_new_map_needed()
 

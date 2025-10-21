@@ -1,15 +1,24 @@
 extends Node
 
-signal playerPos(pos: Vector2, teleport: bool) #player location
-signal addCollectable
-signal updateCollectables
-
-
+## Player
+signal player_position_updated(pos: Vector2, teleport: bool)
 signal player_entered_creature_range(creature: Creature)
+signal player_pickedup_collectable(name_id: String)
+
 signal creature_combat_start(creature_data: CreatureData)
 signal creature_combat_delayed(creature_data: CreatureData)
 signal creature_captured(creature_data: CreatureData)
 
+## Savegame
+signal inventory_collectables_updated(name_id: String, data: InventoryCollectableData)
+signal inventory_creatures_updated(name_id: String, data: InventoryCreatureData)
+
+signal inventory_saved(inventory: InventoryData)
+signal inventory_loaded(inventory: InventoryData)
+
+signal settings_updated(settings: SettingsData)
+signal settings_saved(settings: SettingsData)
+signal settings_loaded(settings: SettingsData)
 
 ## GPS Manager
 signal gps_permission_failed

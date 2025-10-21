@@ -289,6 +289,7 @@ func load_or_download_tiles(gps: Vector2) -> int:
 		
 	return tiles_added
 
+
 func load_map(filepath: String) -> MapData:
 	const TILE_SCENE := preload("res://game/map/tile.tscn")
 	
@@ -392,6 +393,7 @@ func create_and_update_path(boundary_data: BoundaryData, packed_scene: PackedSce
 	scn.curve_changed.emit()
 	scn.visible = true
 
+
 func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: PackedVector3Array):
 	var scn := packed_scene.instantiate() as Node3D
 	assert(scn)
@@ -410,6 +412,7 @@ func create_and_update_polygon(packed_scene: PackedScene, parent: Node3D, data: 
 			Constants.LOADING_POLYGONS_FRAMESKIP_COUNTER += 1
 	csg.polygon = arr
 	scn.visible = true
+
 
 func replace_map_scene(tile: Tile):
 	const STREET_PATH_SCENE := preload("res://game/map/paths/street_other.tscn")
