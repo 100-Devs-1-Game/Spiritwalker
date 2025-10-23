@@ -37,6 +37,7 @@ func _ready() -> void:
 
 	# we pass self because we want to access these variables in the dialogue script
 	# like "combat" or "this_creatuer_data"
+	# NOTE: this uses the balloon UI in "game/dialogue/balloon"
 	DialogueManager.show_dialogue_balloon(DIALOGUE_EXAMPLE, "start", [self])
 	await DialogueManager.dialogue_ended
 	print("dialogue ended, now we should be back to overworld innit")
