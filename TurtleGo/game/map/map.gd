@@ -1,5 +1,10 @@
 class_name Map extends Node3D
 
+# README
+# - I've tried to split the logic out a bit, as it was all about ~1300 lines in this script
+# - the Map would be renamed to "Overworld" or similar, conceptually
+# - it might still do stuff which would make more sense to handle in the TileManager
+
 # Debug Counters
 var counter_location_updates := 0
 var counter_downloads_completed := 0
@@ -13,6 +18,7 @@ var previous_tile_coordinates := Vector2i.ZERO
 @onready var player: Player = %Player
 @onready var tp_button: Button = $Button
 
+
 func _ready():
 	tp_button.pressed.connect(_on_button_pressed)
 
@@ -21,7 +27,9 @@ func _ready():
 	Signals.tile_loading_started.connect(_tile_loading_started)
 	Signals.tile_loading_finished.connect(_tile_loading_finished)
 
-	var err := DirAccess.make_dir_recursive_absolute("user://maps/z%d/" % Constants.WORLD_TILE_ZOOM_LEVEL)
+	var err := DirAccess.make_dir_recursive_absolute(
+		"user://maps/z%d/" % Constants.WORLD_TILE_ZOOM_LEVEL
+	)
 	if err != Error.OK:
 		push_error("failed to create maps directory: ", err)
 
@@ -29,7 +37,7 @@ func _ready():
 
 	if not Utils.is_mobile_device():
 		print("ON DESKTOP - SETTING DEBUG LOCATION")
-		
+
 		var lat := 0.0
 		var lon := 0.0
 		# England
@@ -49,32 +57,39 @@ func _ready():
 			%FPS.text = "%dfps" % Engine.get_frames_per_second()
 			await get_tree().process_frame
 
+
 func _on_gps_data_received(p_gps_manager: GpsManager) -> void:
 	#print("RECEIVED NEW GPS DATA: TILE COORDINATES ARE %s" % p_gps_manager.last_known_tile_coordinates)
 	assert(p_gps_manager == gps_manager)
 
 	if not tile_manager.origin_map_data || not tile_manager.origin_map_data.boundaryData.valid:
 		await tile_manager.load_or_download_tiles(p_gps_manager.last_known_gps_position)
-	
+
 	counter_location_updates += 1
 
-	var player_pos := tile_manager.mercator_to_godot_from_origin(gps_manager.last_known_merc_position)
+	var player_pos := tile_manager.mercator_to_godot_from_origin(
+		gps_manager.last_known_merc_position
+	)
 	# TODO: if we are more than... 100 tiles? away, then reset the origin?
 	Signals.player_position_updated.emit(player_pos, false)
-	
+
 	await check_if_new_map_needed()
 
 	if OS.is_debug_build():
 		if tile_manager.current_map_data && tile_manager.current_map_data.boundaryData.valid:
-			%LabelTileCoord.text = "tile %s" % tile_manager.current_map_data.boundaryData.tile_coordinate
+			%LabelTileCoord.text = (
+				"tile %s" % tile_manager.current_map_data.boundaryData.tile_coordinate
+			)
 
 	if OS.is_debug_build():
 		$VBoxContainer/Label.text = str(
 			counter_location_updates,
-			" lat: ", p_gps_manager.last_known_gps_position.y,
-			", lon:  ", p_gps_manager.last_known_gps_position.x
+			" lat: ",
+			p_gps_manager.last_known_gps_position.y,
+			", lon:  ",
+			p_gps_manager.last_known_gps_position.x
 		)
-	
+
 	#print("UPDATED PREVIOUS PLAYER TILE COORDINATE FROM %s TO %s" % [previous_tile_coordinates, p_gps_manager.last_known_tile_coordinates])
 	previous_tile_coordinates = p_gps_manager.last_known_tile_coordinates
 
@@ -87,7 +102,9 @@ func check_if_new_map_needed():
 		player_changed_tile = true
 
 	if tile_manager.tiles_loaded.has(gps_manager.last_known_tile_coordinates):
-		tile_manager.current_map_data = tile_manager.tiles_loaded[gps_manager.last_known_tile_coordinates].map_data
+		tile_manager.current_map_data = (
+			tile_manager.tiles_loaded[gps_manager.last_known_tile_coordinates].map_data
+		)
 
 	var needs_new_map := false
 	if !tile_manager.current_map_data || tile_manager.current_map_data.boundaryData.valid == false:
@@ -98,21 +115,23 @@ func check_if_new_map_needed():
 		if OS.is_debug_build():
 			$VBoxContainer/Label5.text = "player within boundary box!"
 		return
-	
+
 	if needs_new_map:
 		if OS.is_debug_build():
 			$VBoxContainer/Label5.text = "out of bounds!"
-	
+
 	# even if we don't need the map we entered, we do need to grab the neighbouring tiles
 	# so we have to do this regardless (+ we can reprio existing queued tiles)
 	await tile_manager.load_or_download_tiles(gps_manager.last_known_gps_position)
 
 
 func _on_button_pressed():
-	gps_manager.provide_gps_data({
-		"latitude": gps_manager.last_known_gps_position.y + 0.001,
-		"longitude": gps_manager.last_known_gps_position.x
-	})
+	gps_manager.provide_gps_data(
+		{
+			"latitude": gps_manager.last_known_gps_position.y + 0.001,
+			"longitude": gps_manager.last_known_gps_position.x
+		}
+	)
 
 
 func _tile_parsing_finished(_map_data: MapData) -> void:
@@ -134,28 +153,34 @@ func _physics_process(_delta: float) -> void:
 	if not OS.is_debug_build():
 		%DebugFutureGpsPosition.visible = false
 		set_physics_process(false)
-	
+
 	if not GpsManager.is_valid_gps_position(gps_manager.last_known_gps_position):
 		return
-		
+
 	# QLD = queued for loading
 	# QDl = queued for downloading
 	# LD = loading
 	# TTL = total
 	if OS.is_debug_build():
 		%LabelTilesStatus.text = (
-			"%d/%d/%d/%d tiles QLD/QDL/LD/TTL" %
-				[
-					tile_manager.tilecoords_queued_for_loading.size(),
-					tile_manager.tilecoords_queued_for_download.size(),
-					tile_manager.tiles_waiting_to_load,
-					tile_manager.tiles_loaded.size() - tile_manager.tiles_waiting_to_load
-				]
+			"%d/%d/%d/%d tiles QLD/QDL/LD/TTL"
+			% [
+				tile_manager.tilecoords_queued_for_loading.size(),
+				tile_manager.tilecoords_queued_for_download.size(),
+				tile_manager.tiles_waiting_to_load,
+				tile_manager.tiles_loaded.size() - tile_manager.tiles_waiting_to_load
+			]
 		)
-	
-	%DebugFutureGpsPosition.global_position = tile_manager.mercator_to_godot_from_origin(
-		Maths.mercatorProjection(
-			gps_manager.last_known_gps_position.y + player.gps_offset.y,
-			gps_manager.last_known_gps_position.x + player.gps_offset.x,
+
+	%DebugFutureGpsPosition.global_position = (
+		tile_manager
+		. mercator_to_godot_from_origin(
+			(
+				Maths
+				. mercatorProjection(
+					gps_manager.last_known_gps_position.y + player.gps_offset.y,
+					gps_manager.last_known_gps_position.x + player.gps_offset.x,
+				)
+			)
 		)
 	)

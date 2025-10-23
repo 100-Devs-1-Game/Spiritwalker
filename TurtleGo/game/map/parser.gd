@@ -1,23 +1,31 @@
 class_name Parser extends Node3D
 
+# README
+# - this was the original OneBigScript of the codebase
+#   but it now only really handles parsing the OSM XML in to a more minimal godot Resource
+# - it does have a public function 'parse_map' to handle finding the XML/resource too
+
 
 func parse_map(filepath: String) -> MapData:
 	if ResourceLoader.exists(filepath + ".tres"):
-		var existing_map_data := ResourceLoader.load(filepath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE) as MapData
+		var existing_map_data := (
+			ResourceLoader.load(filepath + ".tres", "", ResourceLoader.CACHE_MODE_REPLACE)
+			as MapData
+		)
 		if existing_map_data && existing_map_data.boundaryData.valid:
 			return existing_map_data
-		
+
 		print("how is that possible? ", filepath + ".tres")
 		print_stack()
 		DirAccess.remove_absolute(filepath + ".tres")
-	
+
 	if not FileAccess.file_exists(filepath + ".xml"):
 		if Debug.PARSER:
 			print("failed to find .tres or xml: ", filepath)
 		return null
 
 	Signals.tile_parsing_started.emit(filepath)
-	
+
 	#print("failed to find .tres, parsing xml: ", filepath)
 	var map_data := _parse_xml(filepath + ".xml")
 	if not map_data or not map_data.boundaryData.valid:
@@ -35,14 +43,14 @@ func parse_map(filepath: String) -> MapData:
 
 func _parse_xml(filepath: String) -> MapData:
 	var matIDX: int = 0
-	var listWaypoints: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
-	var listMember: bool = false #if true, buildMatrix, streetMatrix, etc. add subsets from memberMatrix
+	var listWaypoints: bool = false  #if true, buildMatrix, streetMatrix, etc. add subsets from xzMatrix
+	var listMember: bool = false  #if true, buildMatrix, streetMatrix, etc. add subsets from memberMatrix
 
 	var wayID_to_waypoint_dict = {}
 	var wayID: int
-	var xzMatrix: Array[PackedVector3Array] = [] #contains the waypoints from the tag <nd> in the loaded osm file
-	var memberMatrix: Array[Array] = [] #contains the wayIDs from the tag <member> in the loaded osm file
-	var xz_dict = {} #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
+	var xzMatrix: Array[PackedVector3Array] = []  #contains the waypoints from the tag <nd> in the loaded osm file
+	var memberMatrix: Array[Array] = []  #contains the wayIDs from the tag <member> in the loaded osm file
+	var xz_dict = {}  #key: node ID, value: Vector3(x,0,z)  #x,z are lat,lon in Mercator projection
 	var memberIDX: int = -1
 
 	var map_data := MapData.new()
@@ -50,9 +58,7 @@ func _parse_xml(filepath: String) -> MapData:
 	var parser = XMLParser.new()
 	var result := parser.open(filepath)
 	if result != OK:
-		push_error(
-			"failed to open map (%s) when parsing with error %s" % [filepath, result]
-		)
+		push_error("failed to open map (%s) when parsing with error %s" % [filepath, result])
 
 		if result == Error.ERR_FILE_CORRUPT:
 			DirAccess.remove_absolute(filepath)
@@ -68,7 +74,7 @@ func _parse_xml(filepath: String) -> MapData:
 				var lon_xml = float(parser.get_named_attribute_value_safe("lon"))
 
 				var vec := Maths.mercatorProjection(lat_xml, lon_xml)
-				
+
 				xz_dict[id_xml] = Vector3(
 					vec.x - map_data.boundaryData.center.x,
 					0,
@@ -107,11 +113,13 @@ func _parse_xml(filepath: String) -> MapData:
 						map_data.streetMatrix_primary.append(xzMatrix[matIDX])
 					elif value == "secondary":
 						map_data.streetMatrix_secondary.append(xzMatrix[matIDX])
-					elif (value == "pedestrian"
+					elif (
+						value == "pedestrian"
 						|| value == "living_street"
 						|| value == "footway"
 						|| value == "bridleway"
-						|| value == "steps"):
+						|| value == "steps"
+					):
 						map_data.streetMatrix_pedestrian.append(xzMatrix[matIDX])
 					else:
 						map_data.streetMatrix.append(xzMatrix[matIDX])
@@ -132,7 +140,7 @@ func _parse_xml(filepath: String) -> MapData:
 				listMember = true
 
 			elif node_name == "member":
-			#...add the way ids to the memberMatrix.
+				#...add the way ids to the memberMatrix.
 				memberMatrix[memberIDX].append(int(parser.get_named_attribute_value_safe("ref")))
 			#if the current relation has a relevant tag, i.e. water,
 			elif listMember && node_name == "tag":
@@ -140,11 +148,16 @@ func _parse_xml(filepath: String) -> MapData:
 					for IDX in memberMatrix[memberIDX].size():
 						var _wayID = memberMatrix[memberIDX][IDX]
 						if wayID_to_waypoint_dict.has(_wayID):
-							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
+							var _nodeIDs: PackedVector3Array = wayID_to_waypoint_dict[_wayID]
 							map_data.waterMatrix.append(_nodeIDs)
 						else:
 							if Debug.PARSER_XML:
-								print("tried to add water way with ID %s, but we don't know about it" % _wayID)
+								print(
+									(
+										"tried to add water way with ID %s, but we don't know about it"
+										% _wayID
+									)
+								)
 
 			elif listMember && node_name == "tag":
 				var key := parser.get_named_attribute_value_safe("k")
@@ -153,11 +166,16 @@ func _parse_xml(filepath: String) -> MapData:
 					for IDX in memberMatrix[memberIDX].size():
 						var _wayID = memberMatrix[memberIDX][IDX]
 						if wayID_to_waypoint_dict.has(_wayID):
-							var _nodeIDs:PackedVector3Array = wayID_to_waypoint_dict[_wayID]
+							var _nodeIDs: PackedVector3Array = wayID_to_waypoint_dict[_wayID]
 							map_data.railMatrix.append(_nodeIDs)
 						else:
 							if Debug.PARSER_XML:
-								print("tried to add railway way with ID %s, but we don't know about it" % _wayID)
+								print(
+									(
+										"tried to add railway way with ID %s, but we don't know about it"
+										% _wayID
+									)
+								)
 
 			elif node_name == "bounds":
 				var minlat = float(parser.get_named_attribute_value_safe("minlat"))
