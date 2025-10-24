@@ -8,11 +8,25 @@ var endDistance
 var zoom
 var zoomSpeed = 0.3
 
+
 func _input(event):
 	if event is InputEventScreenTouch:
 		handle_touch(event)
 	elif event is InputEventScreenDrag:
 		handle_drag(event)
+	elif event is InputEventMouseButton:
+		var event_mouse := event as InputEventMouseButton
+		if event_mouse.button_index == MOUSE_BUTTON_WHEEL_UP:
+			zoom = clampf(
+				scale.y - (1.0 * Engine.get_main_loop().root.get_process_delta_time()), 1.0, 3.0
+			)
+			scale = Vector3(zoom, zoom, zoom)
+		if event_mouse.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			zoom = clampf(
+				scale.y + (1.0 * Engine.get_main_loop().root.get_process_delta_time()), 1.0, 3.0
+			)
+			scale = Vector3(zoom, zoom, zoom)
+
 
 #if drag motions are detected, the camera rotates
 func handle_drag(event: InputEventScreenDrag):
@@ -28,11 +42,13 @@ func handle_drag(event: InputEventScreenDrag):
 		var touch_point_positions = touchPoints.values()
 		endDistance = touch_point_positions[0].distance_to(touch_point_positions[1])
 		$Camera3D/Label.text = str("startDistance / endDistance: ", startDistance / endDistance)
-		zoom = clampf(scale.y * (startDistance / endDistance) , 1.0,3.0)
-		scale = Vector3(zoom,zoom,zoom)
+		zoom = clampf(scale.y * (startDistance / endDistance), 1.0, 3.0)
+		scale = Vector3(zoom, zoom, zoom)
 		touchPoints.clear()
 	else:
 		touchPoints.clear()
+
+
 #2 finger pinch/extend to zoom in/out
 func handle_touch(event: InputEventScreenTouch):
 	touchPoints[event.index] = event.position

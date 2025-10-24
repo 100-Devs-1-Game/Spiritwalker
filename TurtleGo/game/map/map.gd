@@ -49,6 +49,9 @@ func _ready():
 		# Portugal
 		lat = 37.168008
 		lon = -8.533642
+		# New York
+		lat = 40.72622
+		lon = -73.99030
 		gps_manager.provide_gps_data({"latitude": lat, "longitude": lon})
 
 	if OS.is_debug_build():
