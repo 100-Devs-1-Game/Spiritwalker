@@ -10,13 +10,12 @@ const DIALOGUE_EXAMPLE := preload(
 
 # todo: this would probably be given to this encounter when it's started in the overworld
 # but alternatively you could store it in an autoload temporarily, or some other solution
-var this_creature_data: CreatureData = preload(
-	"res://game/entities/creatures/creature_data_persim.tres"
-)
+var this_creature_data: CreatureData
 
 # confusingly I named some signals "combat" but that was for the encounter, kinda? IDK
 # you can figure it out I'm sure, change things up innit
 @onready var combat: Combat = %Combat
+@onready var texture_rect: TextureRect = %TextureRect
 
 
 func _ready() -> void:
@@ -38,7 +37,10 @@ func _ready() -> void:
 	# we pass self because we want to access these variables in the dialogue script
 	# like "combat" or "this_creatuer_data"
 	# NOTE: this uses the balloon UI in "game/dialogue/balloon"
+
 	DialogueManager.show_dialogue_balloon(DIALOGUE_EXAMPLE, "start", [self])
 	await DialogueManager.dialogue_ended
+
 	print("dialogue ended, now we should be back to overworld innit")
 	queue_free()
+	SceneManager.switch_to_scene(preload("res://game/map/map.tscn"))

@@ -32,18 +32,29 @@ func _ready() -> void:
 	Maths.check_conversion(Vector2i(1, 2))
 	Maths.check_conversion(Vector2i(2, 1))
 
-	Signals.creature_combat_delayed.connect(
-		func(_creature_data: CreatureData) -> void: Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
-	)
-
 	Signals.creature_combat_started.connect(
-		func(_creature_data: CreatureData) -> void: Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+		func(creature_data: CreatureData) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+			# if we fail to start the encounter for some reason, then we should instead mark this as being delayed
+			var encounter_desired := (
+				preload("res://game/encounter/encounter.tscn").instantiate() as Encounter
+			)
+
+			encounter_desired.this_creature_data = creature_data
+			var encounter_actual := SceneManager.switch_to_node(encounter_desired) as Encounter
+			if not encounter_actual:
+				encounter_desired.free()
+				Signals.creature_combat_delayed.emit(creature_data)
 	)
 
 	Signals.creature_combat_delayed.connect(
-		func(_creature_data: CreatureData) -> void: Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+		func(creature_data: CreatureData) -> void:
+			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
+			print("combat delayed for %s" % creature_data)
 	)
 
 	Signals.player_pickedup_collectable.connect(
 		func(_name_id: String) -> void: Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
 	)
+
+	SceneManager.switch_to_scene(preload("res://game/map/map.tscn"))

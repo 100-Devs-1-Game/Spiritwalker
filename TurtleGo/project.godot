@@ -30,6 +30,7 @@ Constants="*res://game/autoloads/constants.gd"
 DialogueManager="*res://addons/dialogue_manager/dialogue_manager.gd"
 Dialogue="*res://game/autoloads/dialogue.gd"
 Audio="*res://game/autoloads/audio.gd"
+SceneManager="*res://game/autoloads/scene_manager.gd"
 
 [debug]
 

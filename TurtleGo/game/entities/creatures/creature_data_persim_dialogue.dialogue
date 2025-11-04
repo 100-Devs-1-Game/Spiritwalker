@@ -1,5 +1,4 @@
 ~ start
-do Signals.creature_combat_started.emit(this_creature_data)
 Persim: blah blah
 - Fight => fight
 - Act => act

@@ -17,6 +17,7 @@ var state := State.IDLE
 var player: Player
 var animation_player: AnimationPlayer
 
+
 func _ready() -> void:
 	assert(data)
 	player_trigger.body_entered.connect(_on_body_entered)
@@ -36,8 +37,10 @@ func _on_body_entered(body: Node3D) -> void:
 	Signals.player_entered_creature_range.emit(self)
 	state = State.TRIGGERED
 
+
 func player_is_overlapping() -> bool:
 	return player in player_trigger.get_overlapping_bodies()
+
 
 func _physics_process(delta: float) -> void:
 	if !player:
@@ -69,14 +72,13 @@ func _physics_process(delta: float) -> void:
 		if Debug.CREATURE:
 			print(self, " chasing")
 		global_position = global_position.move_toward(player.global_position, SPEED * delta)
-		if lengthsqrd <= 10*10:
-			Signals.creature_combat_delayed.emit(data)
-			#Signals.creature_combat_started.emit(data)
+		if lengthsqrd <= 10 * 10:
+			Signals.creature_combat_started.emit(data)
 			if Debug.CREATURE:
 				print(self, " COMBAT")
 			player.creature_chasing = null
 			queue_free()
-		elif lengthsqrd >= 1000*1000:
+		elif lengthsqrd >= 1000 * 1000:
 			if Debug.CREATURE:
 				print(self, " %s TOO FAR AWAY" % lengthsqrd)
 			player.creature_chasing = null
