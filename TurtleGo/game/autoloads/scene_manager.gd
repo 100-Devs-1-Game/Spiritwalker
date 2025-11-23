@@ -4,9 +4,15 @@ var current_scene: Node
 var inactive_scenes: Array[Node]
 var hidden_scene_parent: Node
 
+# TODO:
+# This error "can_process: Condition "!is_inside_tree()" is true. Returning: false"
+# 	Seems to be caused by switching scenes sometimes
+
 
 func _ready() -> void:
-	hidden_scene_parent = Node.new()
+	# Use a subviewport that we never render, so all UI is hidden too
+	# As a bonus, this also prevents any of that UI from stealing input
+	hidden_scene_parent = SubViewport.new()
 	hidden_scene_parent.name = "Hidden"
 	hidden_scene_parent.process_mode = PROCESS_MODE_DISABLED
 	hidden_scene_parent.set_process(false)

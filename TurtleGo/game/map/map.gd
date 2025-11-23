@@ -16,7 +16,7 @@ var previous_tile_coordinates := Vector2i.ZERO
 @onready var gps_manager: GpsManager = %GpsManager
 @onready var parser: Parser = %Parser
 @onready var player: Player = %Player
-@onready var tp_button: Button = $Button
+@onready var tp_button: Button = %Button
 
 
 func _ready():
@@ -85,7 +85,7 @@ func _on_gps_data_received(p_gps_manager: GpsManager) -> void:
 			)
 
 	if OS.is_debug_build():
-		$VBoxContainer/Label.text = str(
+		%VBoxContainer/Label.text = str(
 			counter_location_updates,
 			" lat: ",
 			p_gps_manager.last_known_gps_position.y,
@@ -116,12 +116,12 @@ func check_if_new_map_needed():
 
 	if !needs_new_map && !player_changed_tile:
 		if OS.is_debug_build():
-			$VBoxContainer/Label5.text = "player within boundary box!"
+			%VBoxContainer/Label5.text = "player within boundary box!"
 		return
 
 	if needs_new_map:
 		if OS.is_debug_build():
-			$VBoxContainer/Label5.text = "out of bounds!"
+			%VBoxContainer/Label5.text = "out of bounds!"
 
 	# even if we don't need the map we entered, we do need to grab the neighbouring tiles
 	# so we have to do this regardless (+ we can reprio existing queued tiles)
@@ -139,7 +139,7 @@ func _on_button_pressed():
 
 func _tile_parsing_finished(_map_data: MapData) -> void:
 	if OS.is_debug_build():
-		$VBoxContainer/Label3.text = "finished parsing"
+		%VBoxContainer/Label3.text = "finished parsing"
 
 
 func _tile_loading_started(_map_data: MapData) -> void:
@@ -149,7 +149,7 @@ func _tile_loading_started(_map_data: MapData) -> void:
 
 func _tile_loading_finished(_tile: Tile) -> void:
 	if OS.is_debug_build():
-		$VBoxContainer/Label4.text = str(Time.get_datetime_string_from_system())
+		%VBoxContainer/Label4.text = str(Time.get_datetime_string_from_system())
 
 
 func _physics_process(_delta: float) -> void:

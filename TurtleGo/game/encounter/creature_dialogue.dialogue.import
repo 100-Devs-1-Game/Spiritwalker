@@ -1,0 +1,16 @@
+[remap]
+
+importer="dialogue_manager"
+importer_version=15
+type="Resource"
+uid="uid://caeb7ylt5g4v"
+path="res://.godot/imported/creature_dialogue.dialogue-9d6ff1f3a20c8ac9dd0b05db90cb442f.tres"
+
+[deps]
+
+source_file="res://game/encounter/creature_dialogue.dialogue"
+dest_files=["res://.godot/imported/creature_dialogue.dialogue-9d6ff1f3a20c8ac9dd0b05db90cb442f.tres"]
+
+[params]
+
+defaults=true

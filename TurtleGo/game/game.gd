@@ -36,13 +36,19 @@ func _ready() -> void:
 		func(creature_data: CreatureData) -> void:
 			Audio.play_ui(Audio.UI_BUTTON_HIGHLIGHT)
 			# if we fail to start the encounter for some reason, then we should instead mark this as being delayed
+			print("instantiating encounter")
 			var encounter_desired := (
 				preload("res://game/encounter/encounter.tscn").instantiate() as Encounter
 			)
-
-			encounter_desired.this_creature_data = creature_data
+			print("instantiated encounter")
+			assert(not encounter_desired.is_node_ready())
+			assert(creature_data)
+			encounter_desired.creature_data = creature_data
 			var encounter_actual := SceneManager.switch_to_node(encounter_desired) as Encounter
 			if not encounter_actual:
+				push_warning(
+					"failed to start encounter with %s, so it will be delayed" % creature_data.name
+				)
 				encounter_desired.free()
 				Signals.creature_combat_delayed.emit(creature_data)
 	)

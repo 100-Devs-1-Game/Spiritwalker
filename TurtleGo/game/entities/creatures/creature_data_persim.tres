@@ -1,10 +1,39 @@
-[gd_resource type="Resource" script_class="CreatureData" load_steps=3 format=3 uid="uid://bocgc13edyqd7"]
+[gd_resource type="Resource" script_class="CreatureData" load_steps=8 format=3 uid="uid://bocgc13edyqd7"]
 
 [ext_resource type="PackedScene" uid="uid://d1eifp05heqwp" path="res://assets/persim/persim.tscn" id="1_16kps"]
 [ext_resource type="Script" uid="uid://cjq5m6oj4efj1" path="res://game/entities/creatures/creature_data.gd" id="1_kv86o"]
+[ext_resource type="Script" uid="uid://mtkdkxeffidd" path="res://game/entities/creatures/creature_data_action.gd" id="1_letde"]
+
+[sub_resource type="Resource" id="Resource_d4a6h"]
+script = ExtResource("1_letde")
+name = "Hug"
+text = "😤 😤 😤 ok fine"
+metadata/_custom_type_script = "uid://mtkdkxeffidd"
+
+[sub_resource type="Resource" id="Resource_53aty"]
+script = ExtResource("1_letde")
+name = "Flirt"
+text = "UwU 💖"
+metadata/_custom_type_script = "uid://mtkdkxeffidd"
+
+[sub_resource type="Resource" id="Resource_8nkuj"]
+script = ExtResource("1_letde")
+name = "Tickle"
+text = "NANI?!?!?"
+metadata/_custom_type_script = "uid://mtkdkxeffidd"
+
+[sub_resource type="Resource" id="Resource_ang4p"]
+script = ExtResource("1_letde")
+name = "Insult"
+text = ">:E i hate u"
+metadata/_custom_type_script = "uid://mtkdkxeffidd"
 
 [resource]
 script = ExtResource("1_kv86o")
 name = "Persim"
 scene = ExtResource("1_16kps")
+action_one = SubResource("Resource_53aty")
+action_two = SubResource("Resource_ang4p")
+action_three = SubResource("Resource_8nkuj")
+action_four = SubResource("Resource_d4a6h")
 metadata/_custom_type_script = "uid://cjq5m6oj4efj1"

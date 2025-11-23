@@ -1,0 +1,45 @@
+~ start
+{{name}}: blah blah
+- Fight => fight
+- Act => act
+- Item => item
+- Delay => delay
+=> END
+
+~ fight
+{{name}}: I SURRENDER PLS DO NOT EAT MY ORANGE SLICE
+do Signals.creature_captured.emit(creature_data)
+=> END
+
+~ act
+{{name}}: OwO
+- {{action_one.name}}
+	{{name}}: {{action_one.text}}
+	=> act_minigame
+- {{action_two.name}}
+	{{name}}: {{action_two.text}}
+	=> act_minigame
+- {{action_three.name}}
+	{{name}}: {{action_three.text}}
+	=> act_minigame
+- {{action_four.name}}
+	{{name}}: {{action_four.text}}
+	=> act_minigame
+
+~ item
+{{name}}: you don't even have any items
+=> start
+
+~ delay
+{{name}}: okay toodles, ttyl 💅
+do Signals.creature_combat_delayed.emit(creature_data)
+=> END
+
+~ act_minigame
+do combat.fight()
+if combat.player_dead:
+	{{name}}: nice try mate
+	=> END
+elif combat.creature_dead
+	=> fight
+=> act

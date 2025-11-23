@@ -52,7 +52,105 @@ albedo_color = Color(0.47337472, 0.80662817, 0.9352143, 1)
 [node name="Map" type="Node3D"]
 script = ExtResource("1_y2akx")
 
-[node name="UI" parent="." instance=ExtResource("1_rmfcp")]
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="UI" parent="CanvasLayer" instance=ExtResource("1_rmfcp")]
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+unique_name_in_owner = true
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -179.0
+offset_right = 419.0
+offset_bottom = 241.0
+grow_horizontal = 2
+scale = Vector2(0.6, 0.6)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Teleport"
+icon_alignment = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer"]
+unique_name_in_owner = true
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -329.0
+offset_top = -339.0
+offset_right = 329.0
+grow_horizontal = 2
+grow_vertical = 0
+size_flags_horizontal = 6
+size_flags_vertical = 10
+alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading gps coordinates..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="LabelTileCoord" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "tilecoords"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="LabelTilesStatus" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label2" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "loading..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label3" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "finished parsing"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label4" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "2024-08-21T15:09:46"
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="Label5" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "checking if player is within bounds..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="FPS" type="Label" parent="CanvasLayer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 10
+text = "checking if player is within bounds..."
+horizontal_alignment = 1
+metadata/_edit_use_anchors_ = true
 
 [node name="Parser" parent="." instance=ExtResource("2_y2akx")]
 unique_name_in_owner = true
@@ -99,95 +197,8 @@ top_level = true
 transform = Transform3D(1, 0, 0, 0, 0.9552783, -0.29570803, 0, 0.295708, 0.95527834, 0, 35, 120)
 fov = 79.1
 
-[node name="Button" type="Button" parent="."]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -179.0
-offset_right = 419.0
-offset_bottom = 241.0
-grow_horizontal = 2
-scale = Vector2(0.6, 0.6)
-size_flags_horizontal = 4
-size_flags_vertical = 4
-text = "Teleport"
-icon_alignment = 1
-
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -329.0
-offset_top = -241.0
-offset_right = 329.0
-grow_horizontal = 2
-grow_vertical = 0
-size_flags_horizontal = 6
-size_flags_vertical = 10
-alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="Label" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 10
-text = "loading gps coordinates..."
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="LabelTileCoord" type="Label" parent="VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 10
-text = "tilecoords"
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="LabelTilesStatus" type="Label" parent="VBoxContainer"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 10
-text = "loading..."
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="Label2" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 10
-text = "loading..."
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="Label3" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 10
-text = "finished parsing"
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="Label4" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 10
-text = "2024-08-21T15:09:46"
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="Label5" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 10
-text = "checking if player is within bounds..."
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
-
-[node name="FPS" type="Label" parent="VBoxContainer"]
-unique_name_in_owner = true
+[node name="Label" parent="Player/Camera/Camera3D" index="0"]
 visible = false
-layout_mode = 2
-size_flags_vertical = 10
-text = "checking if player is within bounds..."
-horizontal_alignment = 1
-metadata/_edit_use_anchors_ = true
 
 [node name="DebugFutureGpsPosition" type="CSGBox3D" parent="."]
 unique_name_in_owner = true
