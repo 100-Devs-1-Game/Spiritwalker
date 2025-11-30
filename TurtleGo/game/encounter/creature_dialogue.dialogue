@@ -36,10 +36,10 @@ do Signals.creature_combat_delayed.emit(creature_data)
 => END
 
 ~ act_minigame
-do combat.fight()
+do combat.fight(creature_data)
 if combat.player_dead:
 	{{name}}: nice try mate
 	=> END
-elif combat.creature_dead
+else:
 	=> fight
 => act
