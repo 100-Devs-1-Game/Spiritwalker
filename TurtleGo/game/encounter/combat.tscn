@@ -1,11 +1,25 @@
-[gd_scene load_steps=5 format=3 uid="uid://c3uem316mf1r1"]
+[gd_scene load_steps=12 format=3 uid="uid://c3uem316mf1r1"]
 
 [ext_resource type="Script" uid="uid://bgd7petwp0sxt" path="res://game/encounter/combat.gd" id="1_xd1ms"]
 [ext_resource type="Script" uid="uid://bb0q8a4f3h6mu" path="res://game/encounter/player_heart.gd" id="2_e4vt3"]
 [ext_resource type="Texture2D" uid="uid://diveo70ajsyw8" path="res://assets/Simple Shapes/Heart.png" id="2_h338x"]
+[ext_resource type="Texture2D" uid="uid://bbr3vlnj1asoi" path="res://assets/Simple Shapes/Circle 2.png" id="4_20yto"]
+[ext_resource type="Script" uid="uid://cskalk7ueapqc" path="res://game/encounter/combat_projectile.gd" id="4_nqaur"]
+[ext_resource type="Texture2D" uid="uid://dqeed60w6l7w7" path="res://assets/Simple Shapes/Pentagon 2.png" id="5_d7bb1"]
+[ext_resource type="Texture2D" uid="uid://bs0fguhjbqtsq" path="res://assets/Simple Shapes/Star 2.png" id="6_u25ss"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_e4vt3"]
 radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_d7bb1"]
+radius = 12.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_vige3"]
+radius = 9.0
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nqaur"]
+radius = 6.0
+height = 25.0
 
 [node name="Combat" type="Node2D"]
 script = ExtResource("1_xd1ms")
@@ -41,12 +55,6 @@ show_percentage = false
 
 [node name="Camera2D" type="Camera2D" parent="."]
 
-[node name="Obstacles" type="Node2D" parent="."]
-
-[node name="CirclesOutlines" type="Node2D" parent="Obstacles"]
-
-[node name="Circles" type="Node2D" parent="Obstacles"]
-
 [node name="Player" type="Node2D" parent="."]
 
 [node name="Heart" type="Node2D" parent="Player"]
@@ -60,3 +68,58 @@ texture = ExtResource("2_h338x")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Player/Area2D"]
 shape = SubResource("CircleShape2D_e4vt3")
+
+[node name="Obstacles" type="Node2D" parent="."]
+
+[node name="CirclesOutlines" type="Node2D" parent="Obstacles"]
+visible = false
+
+[node name="Circles" type="Node2D" parent="Obstacles"]
+
+[node name="Projectile1" type="Node2D" parent="."]
+position = Vector2(699, -66)
+script = ExtResource("4_nqaur")
+
+[node name="Body" type="Node2D" parent="Projectile1"]
+
+[node name="Body" type="Sprite2D" parent="Projectile1/Body"]
+scale = Vector2(0.05, 0.05)
+texture = ExtResource("4_20yto")
+
+[node name="Area2D" type="Area2D" parent="Projectile1"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Projectile1/Area2D"]
+shape = SubResource("CircleShape2D_d7bb1")
+
+[node name="Projectile2" type="Node2D" parent="."]
+position = Vector2(610, -124)
+script = ExtResource("4_nqaur")
+
+[node name="Body" type="Node2D" parent="Projectile2"]
+rotation = 1.5707964
+
+[node name="Body" type="Sprite2D" parent="Projectile2/Body"]
+position = Vector2(0, -1)
+scale = Vector2(0.05, 0.05)
+texture = ExtResource("6_u25ss")
+
+[node name="Area2D" type="Area2D" parent="Projectile2/Body"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Projectile2/Body/Area2D"]
+shape = SubResource("CircleShape2D_vige3")
+
+[node name="Projectile3" type="Node2D" parent="."]
+position = Vector2(646, -40)
+script = ExtResource("4_nqaur")
+
+[node name="Body" type="Node2D" parent="Projectile3"]
+rotation = 1.5707964
+
+[node name="Body" type="Sprite2D" parent="Projectile3/Body"]
+scale = Vector2(0.03, 0.06)
+texture = ExtResource("5_d7bb1")
+
+[node name="Area2D" type="Area2D" parent="Projectile3/Body"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Projectile3/Body/Area2D"]
+shape = SubResource("CapsuleShape2D_nqaur")

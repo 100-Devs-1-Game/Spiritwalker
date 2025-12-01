@@ -10,16 +10,27 @@ var creature: CreatureData
 
 func _ready():
 	$Player/Area2D.connect("area_entered", self.player_area_entered)
-	draw_supercircle()
+	
 var capture_tween: Tween
 
 func fight(creature_data: CreatureData) -> void:
 	creature = creature_data
 	capture_tween = create_tween()
 	capture_tween.tween_property($CombatArea/MarginContainer/ProgressBar, "value", 1.0, creature_data.combat_time).from(0.0)
+
+	var combat_style = 0
+	if creature:
+		combat_style = creature.combat_style
+	match combat_style:
+		0:		
+			draw_supercircle()
+		_:
+			spawn_projectiles(combat_style)
+	
+	
+	
 	await capture_tween.finished
-	player_active = false
-	actual_closing_speed = 0.0
+	stop_combat()
 	prints("returning from the fight", player_dead)
 	#await get_tree().create_timer(creature_data.combat_time).timeout
 	
@@ -30,9 +41,59 @@ func _physics_process(delta: float) -> void:
 	match combat_style:
 		0:
 			sync_area_points()
+		_:
+			pass
 	if player_active:
 		$Player.position = $Player.position.move_toward(get_local_mouse_position(), player_follow_mouse_speed*delta).clamp($CombatArea.position, $CombatArea.position+$CombatArea.size)
 
+var projectiles = []
+func spawn_projectiles(combat_style):
+	var projectile_template = null
+	capture_tween.set_parallel(true)
+	capture_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
+	match combat_style:
+		1:
+			projectile_template = $Projectile1
+			var num_projectiles = 50
+			for idx in num_projectiles:
+				var projectile = projectile_template.duplicate()
+				projectile.position = Vector2.LEFT.rotated(randf() * PI) * (300 + randf()*200)
+				$Obstacles.add_child(projectile)
+				capture_tween.tween_property(projectile, "position", Vector2(0,300), creature.combat_time).as_relative()
+		2:
+			projectile_template = $Projectile2
+			capture_tween.set_ease(Tween.EASE_IN_OUT)
+			capture_tween.set_trans(Tween.TRANS_CUBIC)
+			var num_projectiles = 20
+			for idx in num_projectiles:
+				var projectile = projectile_template.duplicate()
+				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * (300 + randf()*200)
+				capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*(300+randf()*700), creature.combat_time*2).as_relative().set_delay(creature.combat_time/num_projectiles*idx)
+				#projectile.look_at(Vector2.ZERO)
+				projectile.rotation = randf() * TAU
+				$Obstacles.add_child(projectile)
+		3:
+			projectile_template = $Projectile3
+			var num_projectiles = 20
+			for idx in num_projectiles:
+				var projectile = projectile_template.duplicate()
+				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * (300 + randf()*200)
+				#capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*(300+randf()*400), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx)
+				capture_tween.tween_callback(tween_projectile_target_player.bind(projectile)).set_delay(creature.combat_time/num_projectiles*idx)
+				projectile.look_at(Vector2.ZERO)
+				$Obstacles.add_child(projectile)
+
+var ongoing_tweens = []
+func tween_projectile_target_player(projectile):
+	projectile.look_at($Player.position)
+	var tween = create_tween()
+	tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
+	tween.set_ease(Tween.EASE_IN)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	ongoing_tweens.append(tween)
+	tween.tween_property(projectile, "position", Vector2.RIGHT.rotated(projectile.rotation)*700, creature.combat_time*0.5).as_relative()
+	
+	
 
 @export var closing_speed = 50
 var actual_closing_speed = 0.0
@@ -109,18 +170,22 @@ func cleanup():
 	area_segments = []
 	polygon_radius = []
 
-
-	
-	
-	
+func stop_combat():
+	player_active = false
+	actual_closing_speed = 0.0
+	for i in projectiles:
+		i.set_process(false)
+		i.speed = 0.0
+	for i in ongoing_tweens:
+		i.kill()
 	
 func take_hit():
+	prints("take_hit")
 	capture_tween.stop()
+	stop_combat()
 	player_dead = true
-	player_active = false
 	player_heart.modulate = Color.CRIMSON
 	player_heart.beating = false
-	actual_closing_speed = 0.0
 	capture_tween.finished.emit()
 
 func reset():
@@ -138,7 +203,6 @@ func player_area_entered(area: Area2D):
 	take_hit()
 
 func draw_supercircle(align = "right_side"):
-	player.show()
 	var offset = 0.0
 	if align == "top":
 		offset = TAU * 0.75
