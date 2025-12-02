@@ -37,4 +37,5 @@ action_two = SubResource("Resource_ang4p")
 action_three = SubResource("Resource_8nkuj")
 action_four = SubResource("Resource_d4a6h")
 combat_style = 1
+combat_time = 10.0
 metadata/_custom_type_script = "uid://cjq5m6oj4efj1"

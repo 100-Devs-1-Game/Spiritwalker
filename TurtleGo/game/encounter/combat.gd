@@ -4,23 +4,25 @@ class_name Combat extends Node2D
 var player_dead := false
 var player_active := true
 var creature: CreatureData
-
+@export var combat_style := 0
 @onready var player = $Player
 @onready var player_heart = $Player/Heart
 
+func set_combat_style(style: int):
+	combat_style = style
+
 func _ready():
+	hide()
 	$Player/Area2D.connect("area_entered", self.player_area_entered)
 	
 var capture_tween: Tween
 
 func fight(creature_data: CreatureData) -> void:
+	show()
 	prints("starting fight", creature_data)
 	creature = creature_data
 	capture_tween = create_tween()
 	capture_tween.tween_property(%CaptureProgressBar, "value", 1.0, creature_data.combat_time).from(0.0)
-	var combat_style = 0
-	if creature:
-		combat_style = creature.combat_style
 	match combat_style:
 		0:
 			polygon_layer_radius = $CombatArea.get_rect().size.x * 0.5

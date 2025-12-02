@@ -1,13 +1,19 @@
-class_name Encounter extends Node3D
+class_name Encounter extends Control
 
 const CREATURE_DIALOGUE := preload("res://game/encounter/creature_dialogue.dialogue")
 var creature_data: CreatureData
 
 # confusingly I named some signals "combat" but that was for the encounter, kinda? IDK
 # you can figure it out I'm sure, change things up innit
-@onready var combat: Combat = %Combat
-@onready var texture_rect: TextureRect = %TextureRect
-@onready var camera_3d: Camera3D = $Camera3D
+@onready var combat = %Combat
+@onready var camera_3d: Camera3D = %Camera3D
+@onready var creature_container: Node3D = %CreatureContainer
+
+func replace_combat_with_attack():
+	var container = combat.get_parent()
+	combat.queue_free()
+	combat = preload("res://game/encounter/attack.tscn").instantiate()
+	container.add_child(combat)
 
 
 func _ready() -> void:
@@ -24,7 +30,7 @@ func _ready() -> void:
 	print("encounter ready for creature %s" % creature_data.name)
 
 	var creature := creature_data.scene.instantiate()
-	add_child(creature)
+	creature_container.add_child(creature)
 	#todo: might need extra logic to handle the creatures animations, emotional state, etc.
 
 	camera_3d.make_current()

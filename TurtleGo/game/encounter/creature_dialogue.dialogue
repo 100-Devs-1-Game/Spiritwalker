@@ -7,22 +7,32 @@
 => END
 
 ~ fight
-{{name}}: I SURRENDER PLS DO NOT EAT MY ORANGE SLICE
-do Signals.creature_captured.emit(creature_data)
+do replace_combat_with_attack()
+do combat.fight(creature_data)
+if combat.player_dead:
+	{{name}}: nice try mate
+	=> END
+else:
+	{{name}}: I SURRENDER PLS DO NOT EAT MY ORANGE SLICE
+	do Signals.creature_captured.emit(creature_data)
 => END
 
 ~ act
 {{name}}: OwO
 - {{action_one.name}}
+	do combat.set_combat_style(1)
 	{{name}}: {{action_one.text}}
 	=> act_minigame
 - {{action_two.name}}
+	do combat.set_combat_style(2)
 	{{name}}: {{action_two.text}}
 	=> act_minigame
 - {{action_three.name}}
+	do combat.set_combat_style(1)
 	{{name}}: {{action_three.text}}
 	=> act_minigame
 - {{action_four.name}}
+	do combat.set_combat_style(1)
 	{{name}}: {{action_four.text}}
 	=> act_minigame
 
