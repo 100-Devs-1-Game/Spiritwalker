@@ -15,10 +15,10 @@ script = ExtResource("1_6e35d")
 creature = SubResource("Resource_dk3im")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
-offset_left = -260.0
-offset_top = 193.0
-offset_right = 285.0
-offset_bottom = 289.0
+offset_left = -519.0
+offset_top = 562.0
+offset_right = 209.0
+offset_bottom = 658.0
 
 [node name="Button0" type="Button" parent="HBoxContainer"]
 layout_mode = 2
@@ -34,6 +34,14 @@ text = "test 2"
 
 [node name="Button3" type="Button" parent="HBoxContainer"]
 layout_mode = 2
-text = "test 2"
+text = "test 3"
+
+[node name="Button4" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 4"
+
+[node name="Button5" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 5"
 
 [node name="Combat" parent="." instance=ExtResource("2_px2ir")]

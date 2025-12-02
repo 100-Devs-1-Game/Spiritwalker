@@ -14,21 +14,22 @@ func _ready():
 var capture_tween: Tween
 
 func fight(creature_data: CreatureData) -> void:
+	prints("starting fight", creature_data)
 	creature = creature_data
 	capture_tween = create_tween()
-	capture_tween.tween_property($CombatArea/MarginContainer/ProgressBar, "value", 1.0, creature_data.combat_time).from(0.0)
-
+	capture_tween.tween_property(%CaptureProgressBar, "value", 1.0, creature_data.combat_time).from(0.0)
 	var combat_style = 0
 	if creature:
 		combat_style = creature.combat_style
 	match combat_style:
-		0:		
+		0:
+			polygon_layer_radius = $CombatArea.get_rect().size.x * 0.5
+			min_radius_layer_start = polygon_layer_radius * 0.5
+			actual_closing_speed = polygon_layer_radius / len(layers) * 2
+			
 			draw_supercircle()
 		_:
 			spawn_projectiles(combat_style)
-	
-	
-	
 	await capture_tween.finished
 	stop_combat()
 	prints("returning from the fight", player_dead)
@@ -53,35 +54,80 @@ func spawn_projectiles(combat_style):
 	capture_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	match combat_style:
 		1:
+			# falling bubbles
 			projectile_template = $Projectile1
-			var num_projectiles = 50
+			var num_projectiles = 100
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
-				projectile.position = Vector2.LEFT.rotated(randf() * PI) * (300 + randf()*200)
+				#projectile.position = Vector2.LEFT.rotated(randf() * PI) * (300 + randf()*200)
+				projectile.position = Vector2($CombatArea.get_rect().size.x * randf() * 2 - $CombatArea.get_rect().size.x, $CombatArea.get_rect().position.y)
 				$Obstacles.add_child(projectile)
-				capture_tween.tween_property(projectile, "position", Vector2(0,300), creature.combat_time).as_relative()
+				capture_tween.tween_property(projectile, "position", Vector2(0,$CombatArea.get_rect().size.y), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
 		2:
+			# shifting stars
 			projectile_template = $Projectile2
 			capture_tween.set_ease(Tween.EASE_IN_OUT)
 			capture_tween.set_trans(Tween.TRANS_CUBIC)
-			var num_projectiles = 20
+			var num_projectiles = 50
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
-				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * (300 + randf()*200)
-				capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*(300+randf()*700), creature.combat_time*2).as_relative().set_delay(creature.combat_time/num_projectiles*idx)
+				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * $CombatArea.get_rect().size.x * 1.414 * 0.5
+				capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*($CombatArea.get_rect().size.x * randf() * 1.667), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx*0.125)
 				#projectile.look_at(Vector2.ZERO)
 				projectile.rotation = randf() * TAU
 				$Obstacles.add_child(projectile)
 		3:
+			# piercing arrows
 			projectile_template = $Projectile3
-			var num_projectiles = 20
+			var num_projectiles = 25
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
-				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * (300 + randf()*200)
+				var position_vector = Vector2.RIGHT.rotated(randf() * TAU) * 10000
+				var intersects = []
+				var top_left = $CombatArea.get_rect().position
+				var bottom_right = top_left + $CombatArea.get_rect().size
+				if position_vector.x < 0:
+					var p = Geometry2D.segment_intersects_segment(Vector2.ZERO, position_vector, top_left, Vector2.DOWN * 10000)
+					if p:
+						intersects.append(p)
+				else:
+					var p = Geometry2D.segment_intersects_segment(Vector2.ZERO, position_vector, bottom_right, Vector2.UP * 10000)
+					if p:
+						intersects.append(p)
+				if position_vector.y < 0:
+					var p = Geometry2D.segment_intersects_segment(Vector2.ZERO, position_vector, top_left, Vector2.RIGHT * 10000)
+					if p:
+						intersects.append(p)
+				else:
+					var p = Geometry2D.segment_intersects_segment(Vector2.ZERO, position_vector, bottom_right, Vector2.LEFT * 10000)
+					if p:
+						intersects.append(p)
+				projectile.position = intersects[0]
+				if len(intersects) > 1 and intersects[1].length_squared() < intersects[0].length_squared():
+					projectile.position = intersects[1]	
+				
 				#capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*(300+randf()*400), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx)
 				capture_tween.tween_callback(tween_projectile_target_player.bind(projectile)).set_delay(creature.combat_time/num_projectiles*idx)
 				projectile.look_at(Vector2.ZERO)
 				$Obstacles.add_child(projectile)
+		4:
+			# closing triangles
+			capture_tween.set_ease(Tween.EASE_OUT_IN)
+			capture_tween.set_trans(Tween.TRANS_SINE)
+			projectile_template = $Projectile4
+			var num_projectiles = 25
+			for idx in num_projectiles:
+				var projectile = projectile_template.duplicate()
+				projectile.position = Vector2($CombatArea.get_rect().position.x, $CombatArea.get_rect().size.y * randf() - $CombatArea.get_rect().size.y*0.5)
+				$Obstacles.add_child(projectile)
+				capture_tween.tween_property(projectile, "position", Vector2($CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
+			for idx in num_projectiles:
+				var projectile = projectile_template.duplicate()
+				projectile.rotation = PI
+				projectile.position = Vector2($CombatArea.get_rect().position.x + $CombatArea.get_rect().size.x, $CombatArea.get_rect().size.y * randf() - $CombatArea.get_rect().size.y*0.5)
+				$Obstacles.add_child(projectile)
+				capture_tween.tween_property(projectile, "position", Vector2(-$CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
+
 
 var ongoing_tweens = []
 func tween_projectile_target_player(projectile):
@@ -91,15 +137,13 @@ func tween_projectile_target_player(projectile):
 	tween.set_ease(Tween.EASE_IN)
 	tween.set_trans(Tween.TRANS_CUBIC)
 	ongoing_tweens.append(tween)
-	tween.tween_property(projectile, "position", Vector2.RIGHT.rotated(projectile.rotation)*700, creature.combat_time*0.5).as_relative()
+	tween.tween_property(projectile, "position", Vector2.RIGHT.rotated(projectile.rotation)*$CombatArea.get_rect().size.x*1.414, creature.combat_time*0.5).as_relative()
 	
 	
-
-@export var closing_speed = 50
 var actual_closing_speed = 0.0
 @export var polygon_sides = 60
 var layers = [
-	[1,1,0,0,0],
+	[1,1,0,1,0],
 	[0,1,1,0,1],
 	[1,0,1,1,0],
 	[0,1,0,1,1],
@@ -110,7 +154,7 @@ var layers = [
 @onready var circle_container = $Obstacles/Circles
 @onready var circle_container_outline = $Obstacles/CirclesOutlines
 
-@export var polygon_layer_radius = 200
+var polygon_layer_radius = 200
 var polygon_radius = []
 var min_radius = 5
 var min_radius_layer_start = 100
@@ -191,13 +235,12 @@ func take_hit():
 func reset():
 	player.scale = Vector2(1,1)
 	player_heart.modulate = Color.WHITE
-	actual_closing_speed = closing_speed
 	player_active = true
 	player_heart.beating = true
 	player.position = Vector2.ZERO
 	
 	
-func player_area_entered(area: Area2D):
+func player_area_entered(_area: Area2D):
 	if not player_active:
 		return
 	take_hit()
@@ -266,7 +309,6 @@ func draw_common(layer_idx, idx, option):
 			area.monitorable = false
 		else:
 			pass
-
 		
 func sync_superpolygon_points():
 	if not points:

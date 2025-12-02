@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://c3uem316mf1r1"]
+[gd_scene load_steps=13 format=3 uid="uid://c3uem316mf1r1"]
 
 [ext_resource type="Script" uid="uid://bgd7petwp0sxt" path="res://game/encounter/combat.gd" id="1_xd1ms"]
 [ext_resource type="Script" uid="uid://bb0q8a4f3h6mu" path="res://game/encounter/player_heart.gd" id="2_e4vt3"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://cskalk7ueapqc" path="res://game/encounter/combat_projectile.gd" id="4_nqaur"]
 [ext_resource type="Texture2D" uid="uid://dqeed60w6l7w7" path="res://assets/Simple Shapes/Pentagon 2.png" id="5_d7bb1"]
 [ext_resource type="Texture2D" uid="uid://bs0fguhjbqtsq" path="res://assets/Simple Shapes/Star 2.png" id="6_u25ss"]
+[ext_resource type="Texture2D" uid="uid://3xii4jqlmxia" path="res://assets/Simple Shapes/Triangle 2.png" id="6_vige3"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_e4vt3"]
 radius = 15.0
@@ -19,32 +20,32 @@ radius = 9.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_nqaur"]
 radius = 6.0
-height = 25.0
 
 [node name="Combat" type="Node2D"]
 script = ExtResource("1_xd1ms")
 
-[node name="CombatArea" type="ColorRect" parent="."]
-offset_left = -240.0
-offset_top = -135.0
-offset_right = 240.0
-offset_bottom = 135.0
-color = Color(0.4627451, 0.7372549, 0.8352941, 0.3764706)
+[node name="MarginArea" type="ColorRect" parent="."]
+offset_left = -540.0
+offset_top = -540.0
+offset_right = 540.0
+offset_bottom = 540.0
+color = Color(0, 0, 0, 0.3764706)
 
-[node name="MarginContainer" type="MarginContainer" parent="CombatArea"]
+[node name="MarginContainer" type="MarginContainer" parent="MarginArea"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 64
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 64
 
-[node name="ProgressBar" type="ProgressBar" parent="CombatArea/MarginContainer"]
-custom_minimum_size = Vector2(10, 10)
+[node name="CaptureProgressBar" type="ProgressBar" parent="MarginArea/MarginContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 10)
 layout_mode = 2
 size_flags_horizontal = 8
 size_flags_vertical = 1
@@ -52,6 +53,13 @@ max_value = 1.0
 value = 0.5
 fill_mode = 3
 show_percentage = false
+
+[node name="CombatArea" type="ColorRect" parent="."]
+offset_left = -480.0
+offset_top = -480.0
+offset_right = 480.0
+offset_bottom = 480.0
+color = Color(0, 0, 0, 0.3764706)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 
@@ -61,7 +69,7 @@ show_percentage = false
 script = ExtResource("2_e4vt3")
 
 [node name="Heart" type="Sprite2D" parent="Player/Heart"]
-scale = Vector2(0.09, 0.1)
+scale = Vector2(0.4, 0.4)
 texture = ExtResource("2_h338x")
 
 [node name="Area2D" type="Area2D" parent="Player"]
@@ -83,12 +91,28 @@ script = ExtResource("4_nqaur")
 [node name="Body" type="Node2D" parent="Projectile1"]
 
 [node name="Body" type="Sprite2D" parent="Projectile1/Body"]
-scale = Vector2(0.05, 0.05)
+scale = Vector2(0.2, 0.2)
 texture = ExtResource("4_20yto")
 
 [node name="Area2D" type="Area2D" parent="Projectile1"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Projectile1/Area2D"]
+shape = SubResource("CircleShape2D_d7bb1")
+
+[node name="Projectile4" type="Node2D" parent="."]
+position = Vector2(699, -66)
+script = ExtResource("4_nqaur")
+
+[node name="Body" type="Node2D" parent="Projectile4"]
+
+[node name="Body" type="Sprite2D" parent="Projectile4/Body"]
+rotation = 1.5707964
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("6_vige3")
+
+[node name="Area2D" type="Area2D" parent="Projectile4"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Projectile4/Area2D"]
 shape = SubResource("CircleShape2D_d7bb1")
 
 [node name="Projectile2" type="Node2D" parent="."]
@@ -100,7 +124,7 @@ rotation = 1.5707964
 
 [node name="Body" type="Sprite2D" parent="Projectile2/Body"]
 position = Vector2(0, -1)
-scale = Vector2(0.05, 0.05)
+scale = Vector2(0.2, 0.2)
 texture = ExtResource("6_u25ss")
 
 [node name="Area2D" type="Area2D" parent="Projectile2/Body"]
@@ -116,7 +140,7 @@ script = ExtResource("4_nqaur")
 rotation = 1.5707964
 
 [node name="Body" type="Sprite2D" parent="Projectile3/Body"]
-scale = Vector2(0.03, 0.06)
+scale = Vector2(0.12, 0.24)
 texture = ExtResource("5_d7bb1")
 
 [node name="Area2D" type="Area2D" parent="Projectile3/Body"]
