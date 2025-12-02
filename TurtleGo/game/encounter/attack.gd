@@ -5,6 +5,7 @@ var creature: CreatureData
 @onready var player_heart = $Player/Heart
 @export var attack_time = 3.0
 @export var height = 400.0
+@export var leniency = 0.333
 var player_dead = true
 var combat_rect: Rect2
 func _ready():
@@ -29,8 +30,7 @@ func fight(creature_data: CreatureData) -> void:
 	if player_heart.modulate == Color("66dd00"):
 		player_dead = false
 	else:
-		prints(abs(player.position.y), height/3.0)
-		if abs(player.position.y)<height/3.0:
+		if abs(player.position.y)<height*leniency:
 			player_heart.modulate = Color.YELLOW
 			player_dead = false
 	prints("returning from the attack", player_dead)
