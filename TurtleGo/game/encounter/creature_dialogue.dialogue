@@ -10,9 +10,11 @@
 do replace_combat_with_attack()
 do combat.fight(creature_data)
 if combat.player_dead:
+	do play_creature_animation("02_attack")
 	{{name}}: nice try mate
 	=> END
 else:
+	do play_creature_animation("03_happy")
 	{{name}}: I SURRENDER PLS DO NOT EAT MY ORANGE SLICE
 	do Signals.creature_captured.emit(creature_data)
 => END

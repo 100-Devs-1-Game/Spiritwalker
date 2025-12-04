@@ -8,13 +8,24 @@ var creature_data: CreatureData
 @onready var combat = %Combat
 @onready var camera_3d: Camera3D = %Camera3D
 @onready var creature_container: Node3D = %CreatureContainer
-
+var creature: Node3D
 func replace_combat_with_attack():
 	var container = combat.get_parent()
 	combat.queue_free()
 	combat = preload("res://game/encounter/attack.tscn").instantiate()
 	container.add_child(combat)
 
+func play_creature_animation(animation:String, wait:bool=true):
+	var root = creature
+	while root.get_children():
+		var animation_player := root.get_node_or_null("AnimationPlayer") as AnimationPlayer
+		if animation_player:
+			animation_player.play(animation)
+			if wait:
+				await animation_player.animation_finished
+				animation_player.play("01_idle")
+			break
+		root = root.get_child(0)
 
 func _ready() -> void:
 	# hopefully we launched with F6
@@ -29,8 +40,9 @@ func _ready() -> void:
 	assert(creature_data.action_four)
 	print("encounter ready for creature %s" % creature_data.name)
 
-	var creature := creature_data.scene.instantiate()
+	creature = creature_data.scene.instantiate()
 	creature_container.add_child(creature)
+	play_creature_animation("01_idle", false)
 	#todo: might need extra logic to handle the creatures animations, emotional state, etc.
 
 	camera_3d.make_current()
