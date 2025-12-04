@@ -1,7 +1,23 @@
-[gd_scene load_steps=3 format=3 uid="uid://bb58784gkpsd6"]
+[gd_scene load_steps=7 format=3 uid="uid://bb58784gkpsd6"]
 
 [ext_resource type="Script" uid="uid://b5dvrdud14lfd" path="res://game/encounter/encounter.gd" id="1_jonri"]
 [ext_resource type="PackedScene" uid="uid://c3uem316mf1r1" path="res://game/encounter/combat.tscn" id="2_oulw3"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uo2p4"]
+shading_mode = 0
+albedo_color = Color(0.42414925, 0.6731223, 0.48415476, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_jonri"]
+material = SubResource("StandardMaterial3D_uo2p4")
+size = Vector2(20, 20)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jonri"]
+shading_mode = 0
+albedo_color = Color(0.34645915, 0.64748394, 0.7934861, 1)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_oulw3"]
+material = SubResource("StandardMaterial3D_jonri")
+size = Vector2(20, 60)
 
 [node name="Encounter" type="Control"]
 layout_mode = 3
@@ -40,6 +56,13 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18975568, 1)
 current = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="SubViewportContainer3D/SubViewport/CreatureContainer"]
+mesh = SubResource("PlaneMesh_jonri")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="SubViewportContainer3D/SubViewport/CreatureContainer"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, -20)
+mesh = SubResource("PlaneMesh_oulw3")
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="."]
 custom_minimum_size = Vector2(1080, 1080)

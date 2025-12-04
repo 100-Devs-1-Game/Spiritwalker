@@ -30,11 +30,11 @@ else:
 	{{name}}: {{action_two.text}}
 	=> act_minigame
 - {{action_three.name}}
-	do combat.set_combat_style(1)
+	do combat.set_combat_style(3)
 	{{name}}: {{action_three.text}}
 	=> act_minigame
 - {{action_four.name}}
-	do combat.set_combat_style(1)
+	do combat.set_combat_style(4)
 	{{name}}: {{action_four.text}}
 	=> act_minigame
 

@@ -10,6 +10,8 @@ var creature: CreatureData
 
 func set_combat_style(style: int):
 	combat_style = style
+	prints("setting combat style", combat_style, self)
+	
 
 func _ready():
 	hide()
@@ -19,7 +21,7 @@ var capture_tween: Tween
 
 func fight(creature_data: CreatureData) -> void:
 	show()
-	prints("starting fight", creature_data)
+	prints("starting fight", creature_data, self, combat_style)
 	creature = creature_data
 	capture_tween = create_tween()
 	capture_tween.tween_property(%CaptureProgressBar, "value", 1.0, creature_data.combat_time).from(0.0)
@@ -34,6 +36,11 @@ func fight(creature_data: CreatureData) -> void:
 			spawn_projectiles(combat_style)
 	await capture_tween.finished
 	stop_combat()
+	# add a delay to show the result before hiding
+	capture_tween = create_tween()
+	capture_tween.tween_interval(0.5)
+	await capture_tween.finished
+	hide()
 	prints("returning from the fight", player_dead)
 	#await get_tree().create_timer(creature_data.combat_time).timeout
 	
@@ -287,11 +294,12 @@ func draw_common(layer_idx, idx, option):
 		circle_container.add_child(line)
 		line.default_color = Color.WHITE
 		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		line.width = 24
 		line.end_cap_mode = Line2D.LINE_CAP_ROUND
 		lines_perimeter[-1].append(line)
 		var line2 = Line2D.new()
 		line2.default_color = Color.BLACK
-		line2.width = 18
+		line2.width = 36
 		line2.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		line2.end_cap_mode = Line2D.LINE_CAP_ROUND
 		lines_perimeter2[-1].append(line2)

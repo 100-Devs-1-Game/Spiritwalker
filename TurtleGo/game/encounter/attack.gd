@@ -33,6 +33,11 @@ func fight(creature_data: CreatureData) -> void:
 		if abs(player.position.y)<height*leniency:
 			player_heart.modulate = Color.YELLOW
 			player_dead = false
+	# add a delay to show the result before hiding
+	capture_tween = create_tween()
+	capture_tween.tween_interval(0.5)
+	await capture_tween.finished
+	hide()
 	prints("returning from the attack", player_dead)
 
 

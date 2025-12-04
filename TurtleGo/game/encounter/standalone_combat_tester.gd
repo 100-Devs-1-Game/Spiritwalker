@@ -16,11 +16,11 @@ func test(idx):
 			combat = preload("res://game/encounter/attack.tscn").instantiate()
 			add_child(combat)
 			await combat.fight(creature)
-
 		_:
-			creature.combat_style=idx
 			combat = preload("res://game/encounter/combat.tscn").instantiate()
 			add_child(combat)
+			combat.set_combat_style(idx)
+			#combat.combat_style = idx
 			await combat.fight(creature)
 			
 	if combat.player_dead:
