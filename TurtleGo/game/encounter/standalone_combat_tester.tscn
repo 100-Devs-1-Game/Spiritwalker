@@ -1,0 +1,47 @@
+[gd_scene load_steps=5 format=3 uid="uid://vjndrqttl8dh"]
+
+[ext_resource type="Script" uid="uid://b7lm3ch77hrbd" path="res://game/encounter/standalone_combat_tester.gd" id="1_6e35d"]
+[ext_resource type="Script" uid="uid://cjq5m6oj4efj1" path="res://game/entities/creatures/creature_data.gd" id="2_apf3e"]
+[ext_resource type="PackedScene" uid="uid://c3uem316mf1r1" path="res://game/encounter/combat.tscn" id="2_px2ir"]
+
+[sub_resource type="Resource" id="Resource_dk3im"]
+script = ExtResource("2_apf3e")
+combat_style = 3
+combat_time = 5.0
+metadata/_custom_type_script = "uid://cjq5m6oj4efj1"
+
+[node name="StandaloneCombatTester" type="Node2D"]
+script = ExtResource("1_6e35d")
+creature = SubResource("Resource_dk3im")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+offset_left = -519.0
+offset_top = 562.0
+offset_right = 209.0
+offset_bottom = 658.0
+
+[node name="Button0" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 0"
+
+[node name="Button1" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 1"
+
+[node name="Button2" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 2"
+
+[node name="Button3" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 3"
+
+[node name="Button4" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 4"
+
+[node name="Button5" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "test 5"
+
+[node name="Combat" parent="." instance=ExtResource("2_px2ir")]

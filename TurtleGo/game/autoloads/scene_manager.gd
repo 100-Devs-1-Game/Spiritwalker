@@ -74,7 +74,7 @@ func _hide_current_scene() -> void:
 	current_scene.set_physics_process(false)
 	current_scene.set_process(false)
 	if current_scene is CanvasItem:
-		(current_scene as Node2D).visible = false
+		current_scene.visible = false
 	if current_scene is Node3D:
 		(current_scene as Node3D).visible = false
 	remove_child(current_scene)
