@@ -18,6 +18,7 @@ func _ready():
 	$Player/Area2D.connect("area_entered", self.player_area_entered)
 	
 var capture_tween: Tween
+var ongoing_tweens = []
 
 func fight(creature_data: CreatureData) -> void:
 	show()
@@ -30,7 +31,6 @@ func fight(creature_data: CreatureData) -> void:
 			polygon_layer_radius = $CombatArea.get_rect().size.x * 0.5
 			min_radius_layer_start = polygon_layer_radius * 0.5
 			actual_closing_speed = polygon_layer_radius / len(layers) * 2
-			
 			draw_supercircle()
 		_:
 			spawn_projectiles(combat_style)
@@ -43,14 +43,20 @@ func fight(creature_data: CreatureData) -> void:
 	hide()
 	prints("returning from the fight", player_dead)
 	#await get_tree().create_timer(creature_data.combat_time).timeout
+
+func _process(delta: float) -> void:
+	match combat_style:
+		0:
+			#sync_area_points()  # needs to be in _physics_process so that the collision shapes are properly updated, this is what's causing the tunneling, TODO fix by adding thicker colliders
+			rotate_polygon(delta)
+			sync_superpolygon_points()
 	
 func _physics_process(delta: float) -> void:
-	var combat_style = 0
-	if creature:
-		combat_style = creature.combat_style
 	match combat_style:
 		0:
 			sync_area_points()
+			#rotate_polygon(delta)
+			#sync_superpolygon_points()
 		_:
 			pass
 	if player_active:
@@ -59,8 +65,10 @@ func _physics_process(delta: float) -> void:
 var projectiles = []
 func spawn_projectiles(combat_style):
 	var projectile_template = null
-	capture_tween.set_parallel(true)
-	capture_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
+	var projectiles_tween := create_tween()
+	projectiles_tween.set_parallel(true)
+	ongoing_tweens.append(projectiles_tween)
+	projectiles_tween.set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	match combat_style:
 		1:
 			# falling bubbles
@@ -71,17 +79,17 @@ func spawn_projectiles(combat_style):
 				#projectile.position = Vector2.LEFT.rotated(randf() * PI) * (300 + randf()*200)
 				projectile.position = Vector2($CombatArea.get_rect().size.x * randf() * 2 - $CombatArea.get_rect().size.x, $CombatArea.get_rect().position.y)
 				$Obstacles.add_child(projectile)
-				capture_tween.tween_property(projectile, "position", Vector2(0,$CombatArea.get_rect().size.y), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
+				projectiles_tween.tween_property(projectile, "position", Vector2(0,$CombatArea.get_rect().size.y), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
 		2:
 			# shifting stars
 			projectile_template = $Projectile2
-			capture_tween.set_ease(Tween.EASE_IN_OUT)
-			capture_tween.set_trans(Tween.TRANS_CUBIC)
+			projectiles_tween.set_ease(Tween.EASE_IN_OUT)
+			projectiles_tween.set_trans(Tween.TRANS_CUBIC)
 			var num_projectiles = 50
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
 				projectile.position = Vector2.RIGHT.rotated(randf() * TAU) * $CombatArea.get_rect().size.x * 1.414 * 0.5
-				capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*($CombatArea.get_rect().size.x * randf() * 1.667), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx*0.125)
+				projectiles_tween.tween_property(projectile, "position", -projectile.position.normalized()*($CombatArea.get_rect().size.x * randf() * 1.667), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx*0.125)
 				#projectile.look_at(Vector2.ZERO)
 				projectile.rotation = randf() * TAU
 				$Obstacles.add_child(projectile)
@@ -116,29 +124,28 @@ func spawn_projectiles(combat_style):
 					projectile.position = intersects[1]	
 				
 				#capture_tween.tween_property(projectile, "position", -projectile.position.normalized()*(300+randf()*400), creature.combat_time).as_relative().set_delay(creature.combat_time/num_projectiles*idx)
-				capture_tween.tween_callback(tween_projectile_target_player.bind(projectile)).set_delay(creature.combat_time/num_projectiles*idx)
+				projectiles_tween.tween_callback(tween_projectile_target_player.bind(projectile)).set_delay(creature.combat_time/num_projectiles*idx)
 				projectile.look_at(Vector2.ZERO)
 				$Obstacles.add_child(projectile)
 		4:
 			# closing triangles
-			capture_tween.set_ease(Tween.EASE_OUT_IN)
-			capture_tween.set_trans(Tween.TRANS_SINE)
+			projectiles_tween.set_ease(Tween.EASE_OUT_IN)
+			projectiles_tween.set_trans(Tween.TRANS_SINE)
 			projectile_template = $Projectile4
 			var num_projectiles = 25
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
 				projectile.position = Vector2($CombatArea.get_rect().position.x, $CombatArea.get_rect().size.y * randf() - $CombatArea.get_rect().size.y*0.5)
 				$Obstacles.add_child(projectile)
-				capture_tween.tween_property(projectile, "position", Vector2($CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
+				projectiles_tween.tween_property(projectile, "position", Vector2($CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
 			for idx in num_projectiles:
 				var projectile = projectile_template.duplicate()
 				projectile.rotation = PI
 				projectile.position = Vector2($CombatArea.get_rect().position.x + $CombatArea.get_rect().size.x, $CombatArea.get_rect().size.y * randf() - $CombatArea.get_rect().size.y*0.5)
 				$Obstacles.add_child(projectile)
-				capture_tween.tween_property(projectile, "position", Vector2(-$CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
+				projectiles_tween.tween_property(projectile, "position", Vector2(-$CombatArea.get_rect().size.x,0), creature.combat_time * 0.5).as_relative().set_delay(creature.combat_time / num_projectiles * idx)
 
 
-var ongoing_tweens = []
 func tween_projectile_target_player(projectile):
 	projectile.look_at($Player.position)
 	var tween = create_tween()
@@ -331,10 +338,6 @@ func sync_superpolygon_points():
 				lines_perimeter[layer_idx][idx].points = [last_point* polygon_radius[layer_idx], points[layer_idx][idx] * polygon_radius[layer_idx]]
 				lines_perimeter2[layer_idx][idx].points = [last_point* polygon_radius[layer_idx], points[layer_idx][idx] * polygon_radius[layer_idx]]
 				last_point = points[layer_idx][idx]			
-
-func _process(delta):
-	rotate_polygon(delta)
-	sync_superpolygon_points()
 		
 func rotate_polygon(delta):
 	if rotate_speed != 0.0 and player_active:
